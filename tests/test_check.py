@@ -362,6 +362,32 @@ def test_oracle_24d_cd_before_the_commit_moves_where_it_is_judged(repo, tmp_path
     assert _gate(elsewhere, command.format(repo=repo.as_posix())).exit_code == code, command
 
 
+@pytest.mark.parametrize("command, code", [
+    ("Set-Location {repo}; git commit -am x", 2),
+    ("set-location -Path '{repo}'; git commit -am x", 2),
+    ("sl -LiteralPath {repo}; git commit -am x", 2),
+    ("Push-Location {repo}; git commit -am x", 2),
+    ("pushd {repo} && git commit -am x", 2),
+    ("chdir {repo} && git commit -am x", 2),
+    ("cd $env:REQLITE_TEST_DIR; git commit -am x", 2),
+    ("cd ${{env:REQLITE_TEST_DIR}}; git commit -am x", 2),
+    ("cd $REQLITE_TEST_DIR && git commit -am x", 2),
+    ('cd "${{REQLITE_TEST_DIR}}" && git commit -am x', 2),
+    ("cd %REQLITE_TEST_DIR% && git commit -am x", 2),
+    ("cd $env:REQLITE_TEST_UNSET; git commit -am x", 0),
+    ("Set-Location -; git commit -am x", 0),
+])
+def test_oracle_24e_powershell_location_commands_and_variables_move_the_commit(
+        repo, tmp_path, monkeypatch, command, code):
+    _break(repo)
+    elsewhere = tmp_path / "elsewhere"
+    elsewhere.mkdir()
+    monkeypatch.setenv("REQLITE_TEST_DIR", str(repo))
+    monkeypatch.delenv("REQLITE_TEST_UNSET", raising=False)
+    command = command.format(repo=repo.as_posix())
+    assert _gate(elsewhere, command).exit_code == code, command
+
+
 def test_oracle_24_a_non_commit_command_passes(repo):
     _break(repo)
     r = _gate(repo, "ls")

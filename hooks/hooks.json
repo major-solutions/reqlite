@@ -7,13 +7,13 @@
           {
             "type": "command",
             "if": "Bash(git commit*)",
-            "command": "uvx --quiet --from \"${CLAUDE_PLUGIN_ROOT}\" --exclude-newer \"7 days\" reqlite commit-gate",
+            "command": "uvx --quiet --from \"${CLAUDE_PLUGIN_ROOT}\" --exclude-newer \"7 days\" reqlite commit-gate; exit $LASTEXITCODE",
             "timeout": 180
           },
           {
             "type": "command",
             "if": "Bash(git -C *)",
-            "command": "uvx --quiet --from \"${CLAUDE_PLUGIN_ROOT}\" --exclude-newer \"7 days\" reqlite commit-gate",
+            "command": "uvx --quiet --from \"${CLAUDE_PLUGIN_ROOT}\" --exclude-newer \"7 days\" reqlite commit-gate; exit $LASTEXITCODE",
             "timeout": 180
           }
         ]

@@ -102,7 +102,7 @@ the engine for you. Every command also works directly from the terminal, without
 through a pinned release:
 
 ```bash
-uvx --from "git+https://github.com/major-solutions/reqlite@v0.1.5" reqlite <command>
+uvx --from "git+https://github.com/major-solutions/reqlite@v0.1.6" reqlite <command>
 ```
 
 The plugin's own copy lives in Claude Code's plugin cache under a path that changes with
@@ -515,9 +515,10 @@ flowchart LR
   subfolder only when the commit changes something under its `graph/` or `ruleset/`, so
   a deliberately broken example project elsewhere does not block unrelated work.
 - **`git commit`, `git -C <dir> commit` and `cd <dir> && git commit` are checked**, the
-  last two in `<dir>`. Other git commands are not, even when they mention "commit". Not
-  covered: `sh -c`, aliases, `env GIT_DIR=…`, and a `cd` whose target needs the shell to
-  expand it (`cd $X`).
+  last two in `<dir>`. PowerShell's `Set-Location`, `sl` and `Push-Location` count as
+  `cd`, and an environment variable in the target (`$env:X`, `$X`, `%X%`) is expanded.
+  Other git commands are not checked, even when they mention "commit". Not covered:
+  `sh -c`, aliases, `env GIT_DIR=…`, and a variable set inside the agent's own session.
 - **New items' fields are listed.** `check --changed` warns with the front-matter fields
   each new item sets, so you can confirm that the values are yours.
 
@@ -546,13 +547,19 @@ intent. Enforcement that cannot be skipped needs branch protection on the remote
 
   ```sh
   #!/bin/sh
-  exec uvx --quiet --from "git+https://github.com/major-solutions/reqlite@v0.1.5" \
+  exec uvx --quiet --from "git+https://github.com/major-solutions/reqlite@v0.1.6" \
     --exclude-newer "7 days" reqlite check --staged graph
   ```
 
   It needs `uv` on the PATH git runs hooks with. The version is pinned, so it does not
   follow plugin updates: bump the tag when you update the plugin, or your own commits and
   the agent's are checked by different engines.
+- **In VS Code's agents the commit check adds 2–3 seconds to every tool call.** VS Code
+  runs plugin hooks without Claude Code's filters, so the check starts before each tool
+  call, file reads included. It returns at once for anything that isn't a commit, so the
+  cost is only the engine's start-up, about 1.5 s for each of its two hook entries.
+  The entries stay separate because merging them would make Claude Code pay that
+  start-up on every shell command.
 - **The ruleset library holds one entry**, reqlite's own. More are planned.
 - **Windows PowerShell may show `ΓÇö` for `—`** when it captures reqlite's output, which
   is UTF-8. Run `[Console]::OutputEncoding = [Text.UTF8Encoding]::new()` in that session,

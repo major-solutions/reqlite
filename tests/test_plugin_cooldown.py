@@ -10,6 +10,8 @@ import json
 import re
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parent.parent
 FLAG = '--exclude-newer "7 days"'
 
@@ -64,6 +66,53 @@ def test_the_gate_also_fires_on_git_dash_c():
     gates = {h.get("if"): h["command"] for h in _hooks()}
     assert set(gates) == {"Bash(git commit*)", "Bash(git -C *)"}
     assert len(set(gates.values())) == 1
+
+
+GATE = "reqlite commit-gate"
+EXIT_SUFFIX = "; exit $LASTEXITCODE"
+
+
+def test_the_gate_command_passes_its_exit_code_through_powershell():
+    """VS Code's Copilot agent on Windows runs a hook through `powershell.exe -Command`,
+    which turns a native exit 2 into 1, and VS Code reads 1 as a non-blocking error: the
+    gate found the errors and the commit went through (issue #105)."""
+    for command in _hook_invocations():
+        assert command.endswith(GATE + EXIT_SUFFIX), command
+
+
+def _shells():
+    import shutil
+
+    for name in ("sh", "bash"):
+        if shutil.which(name):
+            yield name, [shutil.which(name), "-c"], False
+    for name in ("powershell", "pwsh"):
+        if shutil.which(name):
+            # The arguments VS Code passes (issue #105).
+            yield name, [shutil.which(name), "-ExecutionPolicy", "Bypass", "-NoProfile",
+                         "-NoLogo", "-Command"], True
+
+
+@pytest.mark.parametrize("code", [0, 2])
+def test_the_exit_suffix_keeps_the_gate_status_in_every_available_shell(code):
+    """The suffix is PowerShell; in a POSIX shell `$LASTEXITCODE` is unset and the bare
+    `exit` returns the last command's status. Measured with the gate replaced by a process
+    exiting `code`, under each shell on the machine (dash on CI, PowerShell on Windows)."""
+    import subprocess
+    import sys
+
+    command = next(_hook_invocations())
+    suffix = command[command.index(GATE) + len(GATE):]
+    found = list(_shells())
+    assert found, "test premise: at least one shell is available"
+    for name, argv, powershell in found:
+        exe = sys.executable.replace("\\", "/")
+        stub = (f"& '{exe}'" if powershell else f"'{exe}'") + f" -c 'import sys; sys.exit({code})'"
+        if powershell and code:
+            bare = subprocess.run([*argv, stub], capture_output=True).returncode
+            assert bare == 1, f"{name}: test premise, -Command flattens the exit code"
+        got = subprocess.run([*argv, stub + suffix], capture_output=True).returncode
+        assert got == code, name
 
 
 def test_marketplace_manifest_parses_on_older_clients():

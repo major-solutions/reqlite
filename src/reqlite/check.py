@@ -348,6 +348,12 @@ _SEGMENTS = re.compile(r"&&|\|\||[;|&\n]")
 _ENV_ASSIGNMENT = re.compile(r"[A-Za-z_]\w*=.*")
 #: git's global options that take their value as the next word.
 _GIT_OPTS_WITH_VALUE = {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--config-env"}
+#: Commands that change the shell's directory, POSIX and PowerShell (case-insensitive).
+_LOCATION_COMMANDS = {"cd", "chdir", "pushd", "set-location", "sl", "push-location"}
+_LOCATION_PATH_OPTS = {"-path", "-literalpath"}
+#: `${env:X}`, `$env:X`, `${X}`, `$X`, `%X%`.
+_VARIABLE = re.compile(r"\$\{env:(\w+)\}|\$env:(\w+)|\$\{(\w+)\}|\$(\w+)|%(\w+)%",
+                       re.IGNORECASE)
 
 
 def _resolve(base: Path, target: str) -> Path:
@@ -375,12 +381,30 @@ def _words(segment: str) -> list[str]:
         return segment.split()
 
 
+def _location_target(words: list[str]) -> str | None:
+    """The directory a location command (``words[0]``) moves to, or None when it cannot
+    be known here: no target, an option such as `cd -`, or a variable this process does
+    not have. Variables come from the gate's own environment, which the agent's shell
+    inherited; one set inside the agent's session is invisible."""
+    import os
+
+    rest = words[1:]
+    if rest and rest[0].lower() in _LOCATION_PATH_OPTS:
+        rest = rest[1:]
+    if not rest or rest[0].startswith("-"):
+        return None
+    target = _VARIABLE.sub(
+        lambda m: os.environ.get(next(g for g in m.groups() if g), m.group(0)), rest[0])
+    return None if _VARIABLE.search(target) else target
+
+
 def _commit_dir(command: str, cwd: Path) -> Path | None:
     """The directory a `git commit` in ``command`` runs in, or None if it has none.
 
     The commit is git's subcommand — the first word after git's global options — not the
     word anywhere (ORACLES-CHECK 24c). `-C <dir>` and a preceding `cd <dir>` move it
-    (24b, 24d); a `cd` target with shell expansion is not resolved.
+    (24b, 24d), as do PowerShell's location commands and a target naming an environment
+    variable (24e); a target that cannot be resolved leaves the directory unchanged.
     """
     here = cwd
     for segment in _SEGMENTS.split(command):
@@ -389,9 +413,10 @@ def _commit_dir(command: str, cwd: Path) -> Path | None:
             words = words[1:]
         if not words:
             continue
-        if words[0] == "cd":
-            if len(words) > 1 and not words[1].startswith(("$", "-")):
-                here = _resolve(here, words[1])
+        if words[0].lower() in _LOCATION_COMMANDS:
+            target = _location_target(words)
+            if target is not None:
+                here = _resolve(here, target)
             continue
         if words[0] != "git":
             continue
