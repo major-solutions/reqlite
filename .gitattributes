@@ -1,0 +1,18 @@
+# Normalise text files to LF on check-in and on check-out.
+# Windows clients that need CRLF locally can set core.autocrlf=true,
+# but the stored form is always LF.
+* text=auto eol=lf
+
+# Markdown, YAML, Python — all text, all LF
+*.md text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.py text eol=lf
+*.toml text eol=lf
+*.cfg text eol=lf
+*.txt text eol=lf
+*.json text eol=lf
+
+# .gitignore, .gitattributes themselves
+.gitignore text eol=lf
+.gitattributes text eol=lf

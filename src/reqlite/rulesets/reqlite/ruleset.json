@@ -1,0 +1,251 @@
+{
+  "_note": "The five prefixes classify what KIND of thinking an item represents, not where it sits in a hierarchy. They are perspectives, not layers.",
+  "types": {
+    "SRC": {
+      "label": "Source item",
+      "description": "Reality. Observations, assumptions, constraints, pain points. Unified type — the certainty/negotiability dimensions handle subtyping. An assumption (assumed/negotiable) and a constraint (verified/immovable) are both SRC items. Raw uninterpreted input, recorded as received. The quality bar is faithfulness to the original input, not correctness or proper classification. The classifier is agency: an SRC is reality the team cannot change on its own — a law (physical or legal), a constraint, or a stakeholder request. An SRC may be negotiable, but only through its external owner (you can negotiate a request with its author), never by the team's decision alone. If the team holds the authority to decide and revise something itself, it is not an SRC — it is a DD.",
+      "fields": {
+        "certainty": {
+          "values": ["speculative", "assumed", "verified"]
+        },
+        "negotiability": {
+          "values": ["immovable", "constrained", "negotiable"]
+        },
+        "source": {
+          "description": "Where the input came from. Completes the auditability chain.",
+          "values": ["stakeholder interview", "design session", "document", "observation", "assumption", "constraint", "email", "meeting notes", "ticket"]
+        }
+      },
+      "quality_prompt": "prompts/src_quality.md"
+    },
+    "UC": {
+      "label": "Use case",
+      "description": "Scenarios. What the USER walks through. Actor-goal-steps format. A UC without an actor drifts into FR territory. Steps should describe user-facing experience, not system implementation; specific mechanisms (file names, API calls, data formats, tool names) belong in DD or SC items. Classification rule at intake: enumerated steps a user performs make it a UC even when no actor is named — flag the missing actor as a quality issue rather than reclassifying. A system obligation with no user steps is an FR. Step presence is the binding test; actor presence only reinforces it.",
+      "fields": {
+        "certainty": {
+          "values": ["speculative", "assumed", "verified"]
+        },
+        "negotiability": {
+          "values": ["immovable", "constrained", "negotiable"]
+        },
+        "actor": {
+          "description": "Who initiates or participates. Absence is a quality signal, not a parse error."
+        }
+      },
+      "guided_sections": {
+        "_note": "Not rigid templates. Sections are present when relevant. The quality check asks 'should this section be here?' not 'is this section filled in?'",
+        "sections": ["Actor", "Goal", "Steps", "Preconditions", "Success criteria", "Failure modes"]
+      },
+      "quality_prompt": "prompts/uc_quality.md"
+    },
+    "FR": {
+      "label": "Functional requirement",
+      "description": "Capabilities. What the SYSTEM must do. Not a higher layer than UC — a different perspective. UCs describe user experience, FRs describe system capability. One UC can spawn multiple FRs, one FR can serve multiple UCs. An FR is a behavioral contract — canonically 'the system must <verb> <object>' — stating the obligation only: no actor, no user steps, no concrete input values, no invocation procedure, no build detail. Naming an artifact as the object of the obligation ('must expose a /items endpoint') is still an FR; a bare artifact-naming obligation with no construction detail and no effort estimate stays an FR, and it becomes an SC only when it describes that artifact's construction or properties or carries an effort estimate. It becomes a TC only when it adds reproducible inputs and an explicit invocation — a concrete call or trigger the tester runs; citing example inputs or outcomes without an explicit run step stays an FR. If it names an actor or user steps, it is a UC.",
+      "fields": {
+        "certainty": {
+          "values": ["speculative", "assumed", "verified"]
+        },
+        "negotiability": {
+          "values": ["immovable", "constrained", "negotiable"]
+        }
+      },
+      "quality_prompt": "prompts/fr_quality.md"
+    },
+    "DD": {
+      "label": "Design decision",
+      "description": "Choices. Design decisions with rationale. The HOW with the WHY. Should reference what it serves. A DD without trade-offs just says 'we chose X' without explaining what was given up. A DD is a choice within the team's own authority — something the team can decide and later revise on its own. Deliberation is the signal of that authority: if the team weighed at least two live options, the choice was theirs, so it is a DD even when the option selected is an external standard — and the constraint that bounded the choice stays a separate SRC. A direction accepted with no choice among alternatives was never the team's to make, so it is an SRC, not a DD.",
+      "fields": {
+        "certainty": {
+          "values": ["speculative", "assumed", "verified"]
+        },
+        "negotiability": {
+          "values": ["immovable", "constrained", "negotiable"]
+        }
+      },
+      "guided_sections": {
+        "_note": "Not rigid templates. Simple DDs ('manifest format is YAML') may not need extensive trade-offs. Complex DDs always do.",
+        "sections": ["Decision", "Rationale", "Trade-offs", "Serves", "Alternatives considered", "Risks", "Bounding conditions"]
+      },
+      "quality_prompt": "prompts/dd_quality.md"
+    },
+    "SC": {
+      "label": "Solution component",
+      "description": "Artifacts. Concrete deliverables that exist and cost effort to build. Should trace to a DD that justifies it. An SC names a concrete artifact to be built (a file, module, service, endpoint) and carries an effort estimate. Structural test: a named artifact with an effort estimate is an SC; a choice with rationale and no artifact or effort is a DD. One decision can spawn a DD plus one or more SCs.",
+      "fields": {
+        "certainty": {
+          "values": ["speculative", "assumed", "verified"]
+        },
+        "negotiability": {
+          "values": ["immovable", "constrained", "negotiable"]
+        },
+        "effort": {
+          "scale": "fibonacci",
+          "description": "Fibonacci scale (1, 2, 3, 5, 8, 13, 21). Ordinal comparison, not precision."
+        }
+      },
+      "quality_prompt": "prompts/sc_quality.md"
+    },
+    "TC": {
+      "label": "Test case",
+      "description": "Verification specification. How we check that an FR holds, independent of implementation. Derives from FR, not from SC. A TC and its sibling SC share the same upstream (FR \u2192 UC \u2192 SRC) but must be independent of each other \u2014 the test verifies the capability, not the implementation. Each TC should cover a single concern with explicit pass/fail criteria. A TC is a procedure: it names inputs, an invocation, and an observable expected outcome. An FR states the obligation; a TC states the check for it.",
+      "fields": {
+        "certainty": {
+          "values": ["speculative", "assumed", "verified"]
+        },
+        "negotiability": {
+          "values": ["immovable", "constrained", "negotiable"]
+        }
+      },
+      "guided_sections": {
+        "sections": ["Intent", "Inputs", "Expected response", "Negative assertions", "Cleanup"],
+        "_note": "Intent is the capability being verified (not just the action performed). Inputs are concrete, reproducible parameter values. Expected response specifies unambiguous pass/fail criteria. Negative assertions state what must NOT happen (no commit, no branch, no PR) \u2014 essential for rejection tests. Cleanup lists side effects to reverse. Not all TCs need all sections \u2014 a simple validation rejection test may skip Cleanup; a read-only test needs no Negative assertions about write side effects."
+      },
+      "quality_prompt": "prompts/tc_quality.md"
+    }
+  },
+  "common_fields": {
+    "certainty": {
+      "values": ["speculative", "assumed", "verified"],
+      "description": "Confidence in this item's own central claim — for SRC the observation, for UC the scenario's validity, for FR the capability's necessity, for DD the soundness of the decision, for SC the feasibility of the deliverable, for TC that the spec correctly verifies its target FR. 'verified' requires evidence for that claim; 'speculative' expects none. The rule is uniform; only the referent differs by type."
+    },
+    "evidence": {
+      "description": "URL, document reference, quote, or null. What supports this claim."
+    }
+  },
+  "reference_conventions": {
+    "semantics": "Links mean 'I depend on / derive from / am justified by.' The item containing the link depends on the target.",
+    "direction_enforcement": false,
+    "traceability_rule": "Implementations should be justifiable. Every DD should trace back to something that justifies it. Every SC should trace to a DD. But any item can reference any other item if the dependency is real. Cross-type references are normal, not violations. Prefixes are metadata for the reader, not constraints on the graph.",
+    "discouraged_patterns": [
+      "Reverse links ('here is who depends on me')",
+      "See-also links (related but not dependent)",
+      "Example references (SRC citing an FR as an example of what it affects)"
+    ]
+  },
+  "scales": {
+    "certainty": {
+      "verified": 1,
+      "assumed": 2,
+      "speculative": 3
+    }
+  },
+  "analyses": {
+    "coverage": {
+      "requirement_type": "FR",
+      "implementation_type": "SC",
+      "description": "Does every FR have at least one SC pointing at it?",
+      "severity": "warn",
+      "query": {
+        "start": "FR",
+        "terms": [
+          {
+            "name": "cov",
+            "direction": "up",
+            "reduce": "count",
+            "target": "SC"
+          }
+        ],
+        "combine": "cov >= 1"
+      }
+    },
+    "assumption_risk": {
+      "uncertainty_type": "SRC",
+      "uncertainty_field": "certainty",
+      "uncertainty_scores": {
+        "speculative": 3,
+        "assumed": 2,
+        "verified": 1
+      },
+      "effort_type": "SC",
+      "effort_field": "effort",
+      "description": "For each SRC: implementation effort at stake, weighted by uncertainty (verified 1, assumed 2, speculative 3). Verified still counts 1, so a high row means large exposure, not necessarily doubt; read the certainty beside it. An unconfirmed SRC that nothing rests on scores 0 here: see unsupported_assumption.",
+      "severity": "info",
+      "sort": "desc",
+      "query": {
+        "start": "SRC",
+        "terms": [
+          {
+            "name": "eff",
+            "direction": "up",
+            "reduce": "sum",
+            "dimension": "effort",
+            "target": "SC"
+          }
+        ],
+        "combine": "self_certainty * eff"
+      }
+    },
+    "unsupported_assumption": {
+      "description": "An assumed or speculative SRC that nothing depends on. assumption_risk scores it 0, because no effort rests on it, so an unconfirmed fact that should constrain the design drops out of the risk ranking. Link what rests on it, or confirm it is really unused. Result 2 is speculative, 1 assumed.",
+      "severity": "warn",
+      "show": "flagged",
+      "sort": "desc",
+      "query": {
+        "start": "SRC",
+        "terms": [
+          {
+            "name": "dependents",
+            "direction": "up",
+            "reduce": "count"
+          }
+        ],
+        "combine": "(self_certainty - 1) * (dependents == 0)"
+      }
+    },
+    "justification": {
+      "implementation_type": "SC",
+      "justification_type": "SRC",
+      "certainty_field": "certainty",
+      "justified_threshold": "verified",
+      "description": "Is each SC backed by at least one verified SRC in its dependency chain?",
+      "severity": "warn",
+      "query": {
+        "start": "SC",
+        "terms": [
+          {
+            "name": "best",
+            "direction": "down",
+            "reduce": "min",
+            "dimension": "certainty",
+            "target": "SRC"
+          }
+        ],
+        "combine": "best <= 1"
+      }
+    },
+    "effort_distribution": {
+      "effort_type": "SC",
+      "effort_field": "effort",
+      "threshold": 8,
+      "description": "Rank SCs by effort. Flag items above threshold for decomposition review.",
+      "severity": "info",
+      "query": {
+        "start": "SC",
+        "terms": [
+          {
+            "name": "eff",
+            "direction": "self",
+            "reduce": "value",
+            "dimension": "effort"
+          }
+        ],
+        "combine": "eff > 8"
+      }
+    }
+  },
+  "_prompts_note": "consistency.md (dependency-chain review) and layer_consistency.md (peer review) use different category vocabularies because the two scopes surface different problems. Chain-only: ambiguity, missing_dependency, stale_reference, gap. Peer-only: redundancy, overlap, superseded, tension. The only category shared by both is 'contradiction'.",
+  "prompts": {
+    "consistency": "prompts/consistency.md",
+    "layer_consistency": "prompts/layer_consistency.md"
+  },
+  "readme": "readme.md",
+  "write_conventions": {
+    "id_format": "PREFIX-NNN",
+    "id_pattern": "^[A-Z]+-\\d{3}$",
+    "filename_pattern": "{id}-{slug}.md",
+    "branch_prefix": "reqlite/",
+    "validate_id_frontmatter_match": true,
+    "valid_prefixes_from_types": true,
+    "_note": "id_pattern is a regex validated at write time. valid_prefixes_from_types means only prefixes defined in the types section are accepted. Both checks apply conjunctively: an ID must match the regex AND have a valid prefix. The regex permits any all-caps prefix; the prefix whitelist restricts to defined types. Slug is auto-generated from the title: lowercased, non-alphanumeric replaced with hyphens, truncated to 50 chars."
+  }
+}

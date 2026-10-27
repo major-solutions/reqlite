@@ -1,0 +1,57 @@
+[build-system]
+requires = ["setuptools>=77.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "reqlite"
+version = "0.1.5"
+description = "Lightweight post-LLM requirements management"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+authors = [{ name = "Tamás Majoros" }]
+requires-python = ">=3.11"
+dependencies = [
+    "markdown-it-py>=3.0",
+    "networkx>=3.0",
+    "pyyaml>=6.0",
+    "typer>=0.9",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=5.0",
+]
+# DD-031: inferential review ships as an opt-in extra, so `pip install reqlite`
+# pulls no LLM vendor and SC-010's delegated path keeps satisfying FR-004.
+# Pinned exactly (DD-032): the SDK bundles its own CLI, and the runner's isolation and
+# credential guarantees were measured against this pair. Upgrading is a deliberate act
+# that re-runs those measurements, not something an install picks up on its own.
+review = [
+    "claude-agent-sdk==0.2.165",
+]
+
+[project.scripts]
+reqlite = "reqlite.cli:app"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.coverage.run]
+source = ["reqlite"]
+
+[tool.coverage.report]
+show_missing = true
+fail_under = 90
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+reqlite = ["prompts/*.md", "rulesets/*/*.json", "rulesets/*/*.md", "rulesets/*/prompts/*.md"]
+
+[tool.uv]
+# The plugin runs the engine in place via `uvx --from <plugin root>` (DD-032). uv caches a
+# local build keyed on pyproject.toml alone by default, so a source edit would keep running
+# the stale build — engine and skills silently drifting apart. Key the cache on the sources.
+cache-keys = [{ file = "pyproject.toml" }, { file = "src/**/*.py" }, { file = "src/**/*.md" }, { file = "src/**/*.json" }]

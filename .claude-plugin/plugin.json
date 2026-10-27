@@ -1,0 +1,11 @@
+{
+  "name": "reqlite",
+  "displayName": "reqlite",
+  "description": "Requirements as a graph of markdown files: methodology as skills, structural analysis and isolated LLM quality review run locally by the engine in this repository.",
+  "author": {
+    "name": "Tamás Majoros"
+  },
+  "repository": "https://github.com/major-solutions/reqlite",
+  "license": "Apache-2.0",
+  "keywords": ["requirements", "traceability", "dag", "markdown", "review"]
+}

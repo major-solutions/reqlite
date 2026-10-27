@@ -1,0 +1,16 @@
+{
+  "name": "reqlite",
+  "owner": {
+    "name": "major-solutions"
+  },
+  "metadata": {
+    "description": "reqlite as a single-plugin marketplace."
+  },
+  "plugins": [
+    {
+      "name": "reqlite",
+      "source": "./",
+      "description": "Requirements as a graph of markdown files: methodology, structural analysis, and isolated LLM quality review, run locally."
+    }
+  ]
+}
