@@ -160,6 +160,16 @@ def _sub_line(output):
     return next(l for l in output.splitlines() if "subscription review" in l)
 
 
+def test_subscription_line_only_when_asked_for(tmp_path, monkeypatch):
+    """--subscription is a hidden local override (#91): the skill offers every mode doctor
+    reports, so doctor reports this one only when the flag names it."""
+    graph = _healthy(tmp_path)
+    _sdk_present(monkeypatch)
+    result = runner.invoke(app, ["doctor", str(graph)])
+    assert result.exit_code == 0, result.output
+    assert "subscription" not in result.output.lower()
+
+
 def _clear_rerouting(monkeypatch):
     import reqlite.review as R
     for var in R._SUBSCRIPTION_REROUTING_VARS:
@@ -171,7 +181,7 @@ def test_oracle_10_rerouting_variable_warns_subscription_is_refused(tmp_path, mo
     _sdk_present(monkeypatch)
     _clear_rerouting(monkeypatch)
     monkeypatch.setenv("ANTHROPIC_BASE_URL", "http://proxy")
-    result = runner.invoke(app, ["doctor", str(graph)])
+    result = runner.invoke(app, ["doctor", str(graph), "--subscription"])
     assert result.exit_code == 0, result.output
     line = _sub_line(result.output)
     assert line.startswith("[warn]")
@@ -192,7 +202,7 @@ def test_oracle_11_no_rerouting_variable_is_ok_and_says_login_unchecked(tmp_path
     _sdk_present(monkeypatch)
     _clear_rerouting(monkeypatch)
     _config_dir(tmp_path, monkeypatch, login=True)
-    result = runner.invoke(app, ["doctor", str(graph)])
+    result = runner.invoke(app, ["doctor", str(graph), "--subscription"])
     line = _sub_line(result.output)
     assert line.startswith("[ok]")
     assert "not checked" in line
@@ -208,7 +218,7 @@ def test_oracle_12_doctor_and_runner_share_one_condition(tmp_path, monkeypatch):
         monkeypatch.setenv(var, "1")
         reason = R.subscription_refusal()
         assert reason and var in reason
-        line = _sub_line(runner.invoke(app, ["doctor", str(graph)]).output)
+        line = _sub_line(runner.invoke(app, ["doctor", str(graph), "--subscription"]).output)
         assert line.startswith("[warn]") and reason in line, var
 
 
@@ -241,8 +251,9 @@ def test_oracle_14_unset_key_variable_warns_and_names_the_ways_on(tmp_path, monk
     assert result.exit_code == 0, result.output
     line = _key_line(result.output)
     assert line.startswith("[warn]")
-    for name in ("REQLITE_API_KEY", "--api-key-env", "--subscription"):
+    for name in ("REQLITE_API_KEY", "--api-key-env"):
         assert name in line
+    assert "subscription" not in line
 
 
 def test_oracle_15_api_key_env_makes_doctor_check_that_variable(tmp_path, monkeypatch):
@@ -278,7 +289,7 @@ def test_oracle_17_no_stored_login_file_warns(tmp_path, monkeypatch):
     _clear_rerouting(monkeypatch)
     monkeypatch.setattr(sys, "platform", "linux")
     config = _config_dir(tmp_path, monkeypatch, login=False)
-    result = runner.invoke(app, ["doctor", str(graph)])
+    result = runner.invoke(app, ["doctor", str(graph), "--subscription"])
     assert result.exit_code == 0, result.output
     line = _sub_line(result.output)
     assert line.startswith("[warn]")
@@ -299,7 +310,7 @@ def test_oracle_17b_the_file_must_hold_a_claude_login(tmp_path, monkeypatch, con
     monkeypatch.setattr(sys, "platform", "linux")
     config = _config_dir(tmp_path, monkeypatch, login=False)
     (config / ".credentials.json").write_text(content, encoding="utf-8")
-    out = runner.invoke(app, ["doctor", str(graph)]).output
+    out = runner.invoke(app, ["doctor", str(graph), "--subscription"]).output
     assert _sub_line(out).startswith(marker), out
     assert "SECRET" not in out
 
@@ -312,7 +323,7 @@ def test_oracle_17_on_macos_the_line_stays_as_11(tmp_path, monkeypatch):
     _clear_rerouting(monkeypatch)
     monkeypatch.setattr(sys, "platform", "darwin")
     _config_dir(tmp_path, monkeypatch, login=False)
-    line = _sub_line(runner.invoke(app, ["doctor", str(graph)]).output)
+    line = _sub_line(runner.invoke(app, ["doctor", str(graph), "--subscription"]).output)
     assert line.startswith("[ok]") and "not checked" in line
 
 

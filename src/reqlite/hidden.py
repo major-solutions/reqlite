@@ -1,3 +1,4 @@
+# reqlite:begin SC-002
 """
 SC-002: Item parser — text a reader of the rendered page cannot see (issue #88,
 ORACLES-CHECK 36). Computed when an item is parsed, carried on ``Item.hidden``.
@@ -60,3 +61,4 @@ def hidden_text(body: str, frontmatter_yaml: str = "") -> tuple[str, ...]:
     if any(_YAML_COMMENT.search(line) for line in frontmatter_yaml.splitlines()):
         reasons.append("YAML comment in the front matter")
     return tuple(reasons)
+# reqlite:end SC-002

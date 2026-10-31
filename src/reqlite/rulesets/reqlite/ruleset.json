@@ -233,6 +233,15 @@
       }
     }
   },
+  "observed_trace": {
+    "_note": "reqlite trace-compare: compares a test run's per-test coverage with the graph. An SC realises an FR it reaches through intermediate types only; unit tests are fenced with their SC id and the role test, system tests with their TC id. blocking names the findings that fail the run (exit 4).",
+    "requirement_type": "FR",
+    "implementation_type": "SC",
+    "verification_type": "TC",
+    "intermediate_types": ["DD"],
+    "require_unit_test": false,
+    "blocking": ["untraced_test"]
+  },
   "_prompts_note": "consistency.md (dependency-chain review) and layer_consistency.md (peer review) use different category vocabularies because the two scopes surface different problems. Chain-only: ambiguity, missing_dependency, stale_reference, gap. Peer-only: redundancy, overlap, superseded, tension. The only category shared by both is 'contradiction'.",
   "prompts": {
     "consistency": "prompts/consistency.md",

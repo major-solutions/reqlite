@@ -1,0 +1,4 @@
+{
+  "_note": "Marks this toy project as a nested reqlite project, so a fence scan of the repository above skips it. trace-compare runs it on the defaults.",
+  "types": {"FR": {}, "DD": {}, "SC": {}, "TC": {}}
+}

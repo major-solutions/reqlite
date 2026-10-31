@@ -7,7 +7,7 @@ Evaluate the FR against these quality criteria:
 3. **No solution leakage**: The FR should describe WHAT the system must do, not HOW. Implementation mechanisms (specific file formats, tool names, API details, data structures) belong in DD items. Example: "the system must maintain an index mapping topics to contexts" is an FR. "The system must maintain a YAML file with trigger keywords" leaks implementation.
 4. **Distinct from UC**: An FR describes system capability from the system's perspective. A UC describes user experience from the user's perspective. If the FR contains actors, steps, or user-facing language, it may be misclassified.
 5. **Single capability**: Each FR should describe one capability. If it bundles multiple distinct capabilities, it should be split.
-6. **Certainty coherent with evidence**: If certainty is "verified," evidence should be present or the body should reference supporting material. If "speculative," null evidence is expected.
+6. **Certainty coherent with evidence**: If certainty is "verified," evidence should be present or the body should reference supporting material. If "speculative," null evidence is expected. If certainty is not set, do not report `certainty_evidence_mismatch`: the owner sets it, and leaving it unset until they do is the method.
 
 Respond with ONLY valid JSON matching this schema:
 {

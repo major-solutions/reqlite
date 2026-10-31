@@ -1,3 +1,4 @@
+# reqlite:begin SC-020
 """
 SC-020: Project scaffold and ruleset library (DD-036).
 
@@ -72,3 +73,4 @@ def scaffold(project_dir: str, source: str = DEFAULT) -> Path:
     shutil.copytree(src, target, ignore=shutil.ignore_patterns("__pycache__"))
     (project / "graph").mkdir(exist_ok=True)
     return src
+# reqlite:end SC-020

@@ -14,28 +14,24 @@ would be neither independent nor reproducible.
 
 ## Ask before the first review: who pays
 
-Three credentials can pay. **Offer the key first**: it is the default.
+Two credentials can pay. **Offer the key first**: it is the default.
 
 - **An Anthropic API key** (default), read from the environment variable
   `REQLITE_API_KEY`, or from the variable `--api-key-env NAME` names. Billed to the
   Console account that owns the key.
-- **The Claude login stored on this machine** (`--subscription`): the account `claude`
-  itself signed in with, normally a Pro or Max subscription, or API billing if it is a
-  Console account. Any `ANTHROPIC_API_KEY` in the environment is set aside for this mode,
-  even if this session runs on it, so a user whose session uses a work key may be billed
-  on a different, personal account.
 - **The gateway this environment routes Claude through** (`--gateway`): a company gateway
   (`ANTHROPIC_BASE_URL`), Bedrock or Vertex. Billed to whatever that gateway routes to,
   normally the same thing that pays for this Claude Code session. Where a company routes
   Claude through a gateway, it is usually the only path the user may send items over.
 
-Run `reqlite doctor` (below) **before** asking. It has a line for each: `key review`,
-`subscription review` and `gateway review`. Offer only the modes whose line is `[ok]`; a
+Run `reqlite doctor` (below) **before** asking. It has a line for each: `key review` and
+`gateway review`. Offer only the modes whose line is `[ok]`; a
 `[warn]` line says why that mode cannot run. If none is `[ok]`, no inferential check can
 run here: say so and why, do not ask about billing or plan runs, and offer what does run
 here, the algorithmic commands of the `reqlite` skill. The key line checks only that the
-variable is set; the subscription line does not check that a login exists; the gateway
-line names the gateway's kind and model but does not contact it.
+variable is set; the gateway line names the gateway's kind and model but does not contact
+it. If the user names a billing flag this skill does not list, pass it as given, to
+`doctor` as well, and read the line it adds the same way.
 
 Outside a session whose environment holds the gateway, the user names it:
 `--gateway --gateway-url URL --gateway-key-env NAME [--gateway-header HEADER]`, passing
@@ -75,7 +71,7 @@ it from an earlier conversation.
 ## Run it
 
 ```
-uvx --from "${CLAUDE_PLUGIN_ROOT}[review]" --exclude-newer "7 days" reqlite review <ITEM-ID> [graph_dir] [--api-key-env NAME | --subscription | --gateway]
+uvx --from "${CLAUDE_PLUGIN_ROOT}[review]" --exclude-newer 2026-10-24 reqlite review <ITEM-ID> [graph_dir] [--api-key-env NAME | --gateway]
 ```
 
 - If `uvx` is not found, stop and tell the user reqlite needs uv
@@ -97,14 +93,13 @@ uvx --from "${CLAUDE_PLUGIN_ROOT}[review]" --exclude-newer "7 days" reqlite revi
 - The first inferential run in an environment downloads the review extra (the agent SDK
   with its bundled CLI, large). Expect the first call to take longer.
 - Runs may go in parallel; three at once were measured to work. Each counts toward the
-  rules here, and many at once can exhaust the subscription's session limit.
+  rules here, and many at once can hit the account's rate limit.
 - The item must exist as a file in the graph. To review an unsaved draft, offer to write
   it to the graph first.
 - One review takes roughly 10–60 seconds.
 - **More than five reviews in a conversation: confirm first**, counting reviews already
-  run, not only the current request. State how many it will be and get a yes. The terms
-  assume "ordinary, individual usage", and bulk review is a plausible way to leave that;
-  on a key, every review is billed. The user decides, not the loop.
+  run, not only the current request. State how many it will be and get a yes. Every
+  review is billed. The user decides, not the loop.
 - `--model <id>` overrides the reviewing model.
 
 ## Read the result by exit code
@@ -144,7 +139,7 @@ Every item finding inherits the ruleset's defects, so check a new or changed rul
 before trusting item reviews on it.
 
 ```
-uvx --from "${CLAUDE_PLUGIN_ROOT}[review]" --exclude-newer "7 days" reqlite check-ruleset [graph_dir] [--api-key-env NAME | --subscription | --gateway]
+uvx --from "${CLAUDE_PLUGIN_ROOT}[review]" --exclude-newer 2026-10-24 reqlite check-ruleset [graph_dir] [--api-key-env NAME | --gateway]
 ```
 
 - It runs the free deterministic half first (prompt files, `id_pattern`, prefix rules,
@@ -176,7 +171,7 @@ stale references and gaps. The categories come from the project's consistency pr
 (`ruleset.json` → `prompts.consistency`).
 
 ```
-uvx --from "${CLAUDE_PLUGIN_ROOT}[review]" --exclude-newer "7 days" reqlite consistency <ITEM-ID> [graph_dir] [--api-key-env NAME | --subscription | --gateway] [--depth N]
+uvx --from "${CLAUDE_PLUGIN_ROOT}[review]" --exclude-newer 2026-10-24 reqlite consistency <ITEM-ID> [graph_dir] [--api-key-env NAME | --gateway] [--depth N]
 ```
 
 - **Review the chain's items first.** A contradiction between a sound item and a badly
@@ -196,8 +191,10 @@ uvx --from "${CLAUDE_PLUGIN_ROOT}[review]" --exclude-newer "7 days" reqlite cons
 - Exit codes as for review: 0 checked; 1 could not check (stderr); 3 unreadable response
   (not a clean chain).
 - **`scope` is the engine's list of the ids it compiled.** A `scope_mismatch` means the
-  reviewer claims a different set: `missing` ids it did not say it checked, `extra` ids it
-  named that were never in context. Report it and treat the findings with suspicion.
+  reviewer claims a different set. `extra` ids it named were never in context: report
+  it and treat the findings with suspicion. `missing` alone means it did not list every
+  id it checked; on a long chain the list is usually abbreviated, while the engine
+  compiled the whole chain. Mention it, but it is no reason to distrust the findings.
   `unresolved` lists links in the chain to items that do not exist: the reviewer never
   saw them.
 - **An empty findings list means "nothing found within `scope`"**, never "consistent".

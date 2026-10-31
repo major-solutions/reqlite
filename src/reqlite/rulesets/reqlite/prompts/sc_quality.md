@@ -9,7 +9,7 @@ Evaluate the SC against these quality criteria:
 3. **Effort present**: SC items should have an effort estimate. A missing effort value limits the usefulness of assumption risk and effort distribution analyses. If effort is genuinely unknown, that itself is worth noting.
 4. **Not misclassified**: An SC that reads like a design choice with rationale may belong as a DD. An SC that reads like a system capability statement may belong as an FR. Flag only clear cases.
 5. **Sufficiently specific**: The SC should be specific enough that someone could determine when it is done. Vague deliverables ("infrastructure setup") are not verifiable.
-6. **Certainty coherent with evidence**: If certainty is "verified," evidence should be present or the body should reference supporting material. If "speculative," null evidence is expected.
+6. **Certainty coherent with evidence**: If certainty is "verified," evidence should be present or the body should reference supporting material. If "speculative," null evidence is expected. If certainty is not set, do not report `certainty_evidence_mismatch`: the owner sets it, and leaving it unset until they do is the method.
 
 Respond with ONLY valid JSON matching this schema:
 {

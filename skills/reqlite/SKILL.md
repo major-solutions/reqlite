@@ -1,6 +1,6 @@
 ---
 name: reqlite
-description: Requirements as a graph of markdown files — orientation, authoring, and structural analysis for a reqlite project. Use when a repository has a graph/ directory of items named like PREFIX-NNN-slug.md and a ruleset/ beside it, or when the user asks to write, classify, link, retire, browse, or analyse reqlite requirements items (integrity, coverage, risk, report, connections). Item types are per-project; never author from a remembered type system.
+description: Requirements as a graph of markdown files — orientation, authoring, and structural analysis for a reqlite project. Use when a repository has a graph/ directory of items named like PREFIX-NNN-slug.md and a ruleset/ beside it, or when the user asks to write, classify, link, retire, browse, or analyse reqlite requirements items (integrity, coverage, risk, report, connections), or to trace code or tests to them (reqlite:begin/reqlite:end fences, fences, trace-compare). Item types are per-project; never author from a remembered type system.
 ---
 
 # reqlite
@@ -12,7 +12,7 @@ files. No database, no stored edges, no status field — the files are the syste
 ## Run every reqlite command this way
 
 ```
-uvx --from "${CLAUDE_PLUGIN_ROOT}" --exclude-newer "7 days" reqlite <command> [args]
+uvx --from "${CLAUDE_PLUGIN_ROOT}" --exclude-newer 2026-10-24 reqlite <command> [args]
 ```
 
 Below, `reqlite <command>` means exactly that invocation. The reference files use the same
@@ -113,9 +113,11 @@ constraint in point 3.
 |---|---|---|
 | Understand a project | `reqlite report`, `reqlite connections <ID> --mermaid` | `references/commands.md` |
 | Write or change an item | read the type definition, `reqlite next-id <PREFIX>`, compile its foundations, write the file, run `reqlite check --changed` and read its output | `references/authoring.md` |
-| Retire an item | absorb, de-link, delete, say where the value went | `references/authoring.md` |
+| Retire an item | absorb, de-link, delete, re-fence code that cites it, say where the value went | `references/authoring.md` |
+| Trace code or tests to the spec | `reqlite fences [PATHS...]`; with a test run's observed data, `reqlite trace-compare OBSERVED [PATHS...]` | `references/commands.md` |
+| Fence code you write | the fence grammar and which id to fence | `references/authoring.md` |
 | Start a new project | `reqlite init [dir]` (the default ruleset, or `--ruleset <name or path>`), then `reqlite doctor` | `references/methodology.md` |
-| Assess the impact of changing an item | `reqlite connections <ID> --mermaid --direction dependents --depth 0`, then read the dependents that the change touches | `references/commands.md` |
+| Assess the impact of changing an item | `reqlite connections <ID> --mermaid --direction dependents --depth 0`, then read the dependents that the change touches; `reqlite fences --list` shows the code fenced with it | `references/commands.md` |
 | Check a new or changed ruleset | `reqlite check-ruleset --algorithmic`; for the semantic half, the `review` skill | `references/commands.md` |
 | Quality-review an item with an LLM | use the `review` skill | — |
 | Check an item against what it rests on | use the `review` skill (consistency check) | — |
@@ -132,7 +134,8 @@ nothing downstream is meaningful on a broken graph.
   (`reqlite check --changed`), in any project the commit touches. It sees `git commit`,
   `git -C <dir> commit` and `cd <dir> && git commit`, not other command forms or commits
   made outside this session, and anyone can skip it. Run the check yourself after writing.
-  Never describe it as a guarantee.
+  Never describe it as a guarantee. It checks items only: a fence naming a deleted id, or
+  a failing `trace-compare`, does not block a commit. Run `reqlite fences` for those.
 - **Nothing enforces review of agent-written items.** Changes are reviewable only because
   a human sees the diff. Do not commit unless the user asks; propose the commit message.
   If the check blocks a commit, fix the findings; never bypass it (`--no-verify`, another

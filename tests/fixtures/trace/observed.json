@@ -1,0 +1,273 @@
+{
+ "contract": 1,
+ "source": {
+  "tool": "pytest-cov",
+  "commit": "8f30c49e814034e5d7112733f2aae5ae91bc1f90",
+  "metric": "line"
+ },
+ "files": {
+  "src/app.py": "c7f1e494907e024d043793f0c572e2d85fe0a3b119db82fc1eea709eefd8715b",
+  "tests/test_app.py": "739725d87af6d57c24508a06d549bec6a4ab0e94d7d279a074bd095654498ae5"
+ },
+ "executable": {
+  "src/app.py": [
+   4,
+   7,
+   8,
+   13,
+   14,
+   19,
+   20,
+   25,
+   26,
+   31,
+   32,
+   37,
+   38,
+   39,
+   40,
+   41,
+   46,
+   47,
+   52,
+   53,
+   57,
+   59,
+   60,
+   63,
+   67,
+   68
+  ]
+ },
+ "outside_tests": {
+  "src/app.py": [
+   1,
+   4,
+   7,
+   13,
+   19,
+   25,
+   31,
+   37,
+   46,
+   52,
+   57,
+   67
+  ]
+ },
+ "functions": {
+  "src/app.py": [
+   [
+    7,
+    8,
+    "unit_factor"
+   ],
+   [
+    13,
+    14,
+    "clamp"
+   ],
+   [
+    19,
+    20,
+    "convert"
+   ],
+   [
+    25,
+    26,
+    "fmt"
+   ],
+   [
+    31,
+    32,
+    "legacy_export"
+   ],
+   [
+    37,
+    41,
+    "validate"
+   ],
+   [
+    46,
+    47,
+    "calibrate"
+   ],
+   [
+    52,
+    53,
+    "drift"
+   ],
+   [
+    57,
+    63,
+    "gain"
+   ],
+   [
+    67,
+    68,
+    "debug_dump"
+   ]
+  ]
+ },
+ "tests": [
+  {
+   "name": "tests/test_app.py::test_convert_scales_and_clamps",
+   "file": "tests/test_app.py",
+   "line": 8,
+   "outcome": "passed",
+   "executed": {
+    "src/app.py": [
+     14,
+     20
+    ]
+   }
+  },
+  {
+   "name": "tests/test_app.py::test_validate_accepts_numbers",
+   "file": "tests/test_app.py",
+   "line": 15,
+   "outcome": "passed",
+   "executed": {
+    "src/app.py": [
+     32,
+     38,
+     40,
+     41
+    ]
+   }
+  },
+  {
+   "name": "tests/test_app.py::test_calibration_forgets_to_calibrate",
+   "file": "tests/test_app.py",
+   "line": 21,
+   "outcome": "passed",
+   "executed": {
+    "src/app.py": [
+     14,
+     20
+    ]
+   }
+  },
+  {
+   "name": "tests/test_app.py::test_gain_rejects_negative",
+   "file": "tests/test_app.py",
+   "line": 27,
+   "outcome": "passed",
+   "executed": {
+    "src/app.py": [
+     59,
+     60
+    ]
+   }
+  },
+  {
+   "name": "tests/test_app.py::test_gain_scales",
+   "file": "tests/test_app.py",
+   "line": 34,
+   "outcome": "passed",
+   "executed": {
+    "src/app.py": [
+     14,
+     59,
+     63
+    ]
+   }
+  },
+  {
+   "name": "tests/test_app.py::test_scaling_end_to_end",
+   "file": "tests/test_app.py",
+   "line": 40,
+   "outcome": "passed",
+   "executed": {
+    "src/app.py": [
+     8,
+     14,
+     20
+    ]
+   }
+  },
+  {
+   "name": "tests/test_app.py::test_formatting",
+   "file": "tests/test_app.py",
+   "line": 46,
+   "outcome": "passed",
+   "executed": {
+    "src/app.py": [
+     26
+    ]
+   }
+  },
+  {
+   "name": "tests/test_app.py::test_validation_rejects_text",
+   "file": "tests/test_app.py",
+   "line": 52,
+   "outcome": "passed",
+   "executed": {
+    "src/app.py": [
+     38,
+     39
+    ]
+   }
+  },
+  {
+   "name": "tests/test_app.py::test_unit_table",
+   "file": "tests/test_app.py",
+   "line": 59,
+   "outcome": "passed",
+   "executed": {
+    "src/app.py": [
+     8
+    ]
+   }
+  },
+  {
+   "name": "tests/test_app.py::test_calibration",
+   "file": "tests/test_app.py",
+   "line": 65,
+   "outcome": "passed",
+   "executed": {
+    "src/app.py": [
+     47
+    ]
+   }
+  },
+  {
+   "name": "tests/test_app.py::test_limits",
+   "file": "tests/test_app.py",
+   "line": 71,
+   "outcome": "passed",
+   "executed": {
+    "src/app.py": [
+     14,
+     59,
+     63
+    ]
+   }
+  },
+  {
+   "name": "tests/test_app.py::test_validation_dump",
+   "file": "tests/test_app.py",
+   "line": 78,
+   "outcome": "passed",
+   "executed": {
+    "src/app.py": [
+     68
+    ]
+   }
+  },
+  {
+   "name": "tests/test_app.py::test_untraced",
+   "file": "tests/test_app.py",
+   "line": 83,
+   "outcome": "passed",
+   "executed": {
+    "src/app.py": [
+     68
+    ]
+   }
+  }
+ ],
+ "scope": [
+  "src/**/*.py"
+ ]
+}

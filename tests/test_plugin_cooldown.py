@@ -4,6 +4,10 @@ Every plugin invocation of the engine resolves under a dependency cooldown (DD-0
 ``uvx --from <plugin root>`` ignores the project's ``uv.lock`` and its
 ``[tool.uv] exclude-newer``, so the command-line flag is the only setting an installer's
 resolve obeys. One invocation without it resolves whatever was uploaded a minute ago.
+
+The cutoff is an absolute date, set when a release is cut: uv before 0.9.17 rejects a
+relative one ("7 days") with exit 2, the hook protocol's block code, which denied every
+agent commit, and in VS Code every tool call (issue #109).
 """
 
 import json
@@ -13,7 +17,7 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
-FLAG = '--exclude-newer "7 days"'
+FLAG = re.compile(r"--exclude-newer (\d{4}-\d{2}-\d{2})(?=\s)")
 
 
 def _skill_invocations():
@@ -36,10 +40,16 @@ def _hook_invocations():
             yield hook["command"]
 
 
+def _guide_cooldowns():
+    """The user guide's lines that set a cooldown (its pre-commit hook for humans)."""
+    text = (ROOT / "docs" / "user-guide.md").read_text(encoding="utf-8")
+    return [line.strip() for line in text.splitlines() if "--exclude-newer" in line]
+
+
 def test_every_skill_invocation_carries_the_cooldown():
     found = list(_skill_invocations())
     assert len(found) >= 4, "test premise: the skills' invocations are found"
-    missing = [f"{p}: {line}" for p, line in found if FLAG not in line]
+    missing = [f"{p}: {line}" for p, line in found if not FLAG.search(line)]
     assert missing == []
 
 
@@ -47,7 +57,18 @@ def test_every_hook_invocation_carries_the_cooldown():
     found = list(_hook_invocations())
     assert found, "test premise: the commit-gate hook is found"
     for command in found:
-        assert FLAG in command
+        assert FLAG.search(command), command
+
+
+def test_every_invocation_shares_one_cutoff_date():
+    """Skills, hooks and the guide's pre-commit line resolve the same dependency set; a
+    release bumps the date in all of them at once."""
+    guide = _guide_cooldowns()
+    assert guide, "test premise: the guide's pre-commit hook is found"
+    lines = [line for _, line in _skill_invocations()] + list(_hook_invocations()) + guide
+    assert [line for line in lines if not FLAG.search(line)] == []
+    dates = {date for line in lines for date in FLAG.findall(line)}
+    assert len(dates) == 1, dates
 
 
 def test_hooks_are_shell_form_with_the_plugin_root_quoted():
@@ -81,10 +102,16 @@ def test_the_gate_command_passes_its_exit_code_through_powershell():
 
 
 def _shells():
+    """Shells that run a command. On Windows `bash` can be the WSL launcher, which fails
+    every command when no distribution is installed (#125), so each candidate is probed."""
     import shutil
+    import subprocess
+
+    def works(argv):
+        return subprocess.run([*argv, "exit 3"], capture_output=True).returncode == 3
 
     for name in ("sh", "bash"):
-        if shutil.which(name):
+        if shutil.which(name) and works([shutil.which(name), "-c"]):
             yield name, [shutil.which(name), "-c"], False
     for name in ("powershell", "pwsh"):
         if shutil.which(name):

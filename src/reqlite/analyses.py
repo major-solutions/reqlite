@@ -1,3 +1,4 @@
+# reqlite:begin SC-013
 """
 SC-013: Analysis library.
 
@@ -272,3 +273,4 @@ def impact_count(G: nx.DiGraph, node: str) -> int:
     only caller.
     """
     return len(nx.ancestors(G, node))
+# reqlite:end SC-013

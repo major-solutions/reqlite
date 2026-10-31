@@ -1,3 +1,4 @@
+# reqlite:begin SC-010
 """
 SC-010: Inference client (response parsing).
 
@@ -50,3 +51,4 @@ def parse_findings(raw: str, require_target: bool = True) -> dict | None:
         return None
 
     return data
+# reqlite:end SC-010

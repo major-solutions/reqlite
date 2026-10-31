@@ -1,3 +1,4 @@
+# reqlite:begin SC-004
 """
 SC-004: Graph builder. The central representation for reqlite.
 
@@ -122,3 +123,4 @@ def build_graph(items: list[Item]) -> tuple[nx.DiGraph, list[Finding]]:
             ))
 
     return G, findings
+# reqlite:end SC-004

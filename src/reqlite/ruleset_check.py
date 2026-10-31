@@ -1,3 +1,4 @@
+# reqlite:begin SC-018
 """
 SC-018: Ruleset check.
 
@@ -22,6 +23,7 @@ from reqlite.check import id_pattern_hazard
 from reqlite.parse import parse_findings
 from reqlite.query import DIRECTIONS, REDUCERS, combine_errors, self_dimensions
 from reqlite.review import DEFAULT_MODEL, Gateway, ReviewError, _dispatch, _ruleset_path
+from reqlite.trace import config_errors
 
 
 class RulesetError(ReviewError):
@@ -138,6 +140,9 @@ def _lint(ruleset: dict, root: Path) -> list[RulesetFinding]:
 
     for name, decl in _entries(ruleset.get("analyses")).items():
         findings += _lint_analysis(name, decl, ruleset, types)
+    if "observed_trace" in ruleset:
+        findings += [RulesetFinding(c, where, detail) for c, where, detail
+                     in config_errors(ruleset["observed_trace"], types)]
     return findings
 
 
@@ -248,3 +253,4 @@ def check_ruleset(request: RulesetCheckRequest, transport=None) -> dict:
         return result
     result["findings"] = parsed["findings"]
     return result
+# reqlite:end SC-018

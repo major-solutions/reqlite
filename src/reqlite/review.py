@@ -1,3 +1,4 @@
+# reqlite:begin SC-014
 """
 SC-014: Review runner — isolated inferential review (DD-030, DD-031).
 
@@ -685,3 +686,4 @@ def _dispatch(prompt: str, request, transport=None, system_prompt: str = SYSTEM_
         raise type(e)(_redact(str(e), secrets)) from None
     except Exception as e:
         raise ReviewError(_redact(f"the review call failed: {e}", secrets)) from None
+# reqlite:end SC-014

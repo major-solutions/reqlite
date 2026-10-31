@@ -1,3 +1,4 @@
+# reqlite:begin SC-019
 """
 SC-019: Consistency check — one item against its transitive foundations (FR-022, UC-006).
 
@@ -16,6 +17,7 @@ here gates on it.
 
 from dataclasses import dataclass
 import json
+import re
 
 import networkx as nx
 
@@ -91,11 +93,18 @@ def _type_system(ruleset: dict) -> str:
     return "\n".join(lines)
 
 
+#: An item id, as the filename gives it (items._ITEM_FILENAME).
+_ID = re.compile(r"[A-Z]+-\d+")
+
+
 def _claimed_ids(scope) -> set[str] | None:
+    """Every id the reviewer's scope names, wherever it stands. The rest of an abbreviated
+    echo (an ellipsis, "and 12 more") names no id, so it is never `extra` (#122); an
+    annotation beside an id does not hide it."""
     if isinstance(scope, str):
-        return {s.strip() for s in scope.split(",") if s.strip()}
+        return set(_ID.findall(scope))
     if isinstance(scope, list):
-        return {str(s).strip() for s in scope}
+        return {i for s in scope for i in _ID.findall(str(s))}
     return None
 
 
@@ -167,3 +176,4 @@ def check_consistency(request: ConsistencyRequest, transport=None) -> dict:
 
 #: Keys only the engine may set; a reviewer emitting one would otherwise forge it.
 _ENGINE_KEYS = ("target_mismatch", "scope_mismatch", "unresolved")
+# reqlite:end SC-019

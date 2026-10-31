@@ -278,6 +278,28 @@ def test_oracle_18a_differing_scope_is_flagged(tmp_path):
     assert result["scope_mismatch"] == {"missing": ["SRC-001"], "extra": ["UC-001"]}
 
 
+@pytest.mark.parametrize("scope", ["FR-001, SRC-002, …, and 1 more",
+                                   ["FR-001", "SRC-002", "…", "etc."]])
+def test_oracle_18c_an_abbreviated_scope_names_no_extra_ids(tmp_path, scope):
+    """Long chains get an abbreviated echo (#122): ellipses and prose are not ids the
+    reviewer claims to have seen."""
+    result, _ = _check(_project(tmp_path), transport=FakeTransport(_response(scope=scope)))
+    assert result["scope_mismatch"] == {"missing": ["SRC-001"], "extra": []}
+
+
+@pytest.mark.parametrize("scope, mismatch", [
+    ("FR-001, SRC-002, UC-001 (not in chain)", {"missing": ["SRC-001"], "extra": ["UC-001"]}),
+    ("FR-001 SRC-001 SRC-002", None),
+    (["FR-001", "SRC-001..SRC-002"], None),
+])
+def test_oracle_18d_ids_are_extracted_from_annotated_or_unseparated_tokens(
+        tmp_path, scope, mismatch):
+    """An annotation must not hide an extra id, nor missing commas claim nothing (PR #135
+    review)."""
+    result, _ = _check(_project(tmp_path), transport=FakeTransport(_response(scope=scope)))
+    assert result.get("scope_mismatch") == mismatch
+
+
 def test_oracle_18b_absent_scope_is_all_missing(tmp_path):
     result, _ = _check(_project(tmp_path), transport=FakeTransport(_response(scope=None)))
     assert result["scope_mismatch"] == {"missing": ["SRC-001", "SRC-002", "FR-001"],
@@ -391,7 +413,8 @@ def test_oracle_27_without_any_credential_refuses(tmp_path, monkeypatch):
     t = _cli_transport(monkeypatch, FakeTransport(_response()))
     r = _invoke("FR-001", str(_project(tmp_path)))
     assert r.exit_code == 1
-    assert "REQLITE_API_KEY" in r.stderr and "--subscription" in r.stderr
+    assert "REQLITE_API_KEY" in r.stderr and "--gateway" in r.stderr
+    assert "subscription" not in r.stderr
     assert r.stdout.strip() == ""
     assert t.calls == []
 

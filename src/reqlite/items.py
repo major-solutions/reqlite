@@ -1,3 +1,4 @@
+# reqlite:begin SC-002, FR-008
 """
 SC-002: Item parser.
 
@@ -230,3 +231,4 @@ def parse_all(graph_dir: Path) -> list[Item]:
             content = path.read_text(encoding="utf-8")
             items.append(parse_item_content(content, item_id=match.group(1), filename=path.name))
     return items
+# reqlite:end SC-002

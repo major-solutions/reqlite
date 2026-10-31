@@ -1,3 +1,4 @@
+# reqlite:begin SC-011
 """
 SC-011: Dimension query primitive.
 
@@ -256,3 +257,4 @@ def run_query(G, spec: QuerySpec, scales: Scale):
         result = _eval(ast.parse(spec.combine, mode="eval"), env) if spec.combine else None
         rows.append({"id": node, "env": env, "labels": labels, "result": result})
     return rows
+# reqlite:end SC-011

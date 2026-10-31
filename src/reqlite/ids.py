@@ -1,3 +1,4 @@
+# reqlite:begin SC-016
 """
 SC-016: Next-id allocator.
 
@@ -46,3 +47,4 @@ def next_id(prefix: str, graph_dir: Path) -> str:
                   "--format=", "--", ".").splitlines()
     used = [int(m.group(1)) for n in names if (m := pattern.search(n.strip()))]
     return f"{prefix}-{max(used, default=0) + 1:03d}"
+# reqlite:end SC-016

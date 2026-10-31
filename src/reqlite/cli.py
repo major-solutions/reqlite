@@ -1,3 +1,4 @@
+# reqlite:begin SC-005, FR-003
 """
 SC-005: CLI / analysis runner — entry point.
 Satisfies FR-003. Uses Typer (ADR-012).
@@ -555,6 +556,8 @@ def parse_cmd():
 
 
 
+# Hidden: a local override for the owner, not offered to installers while the Agent SDK's
+# claude.ai-login clause is open (#91). It works when named.
 _SUBSCRIPTION_HELP = "Pay with your own logged-in Claude subscription instead of an API key."
 _KEY_ENV_HELP = ("Read the API key from this environment variable instead of "
                  "REQLITE_API_KEY. Takes the variable's name, never the key.")
@@ -620,8 +623,7 @@ def _credential(subscription: bool, api_key_env: str | None,
     except MissingCredentialError as e:
         typer.echo(
             f"Error: {e} Key mode reads {DEFAULT_KEY_ENV} unless --api-key-env NAME names "
-            "another variable; --subscription uses your own logged-in Claude subscription "
-            f"instead, and --gateway your company's gateway.{hint}",
+            f"another variable; --gateway bills your company's gateway instead.{hint}",
             err=True,
         )
         raise typer.Exit(code=1)
@@ -632,7 +634,8 @@ def _credential(subscription: bool, api_key_env: str | None,
 def review_cmd(
     item_id: str = typer.Argument(..., help="Item ID to quality-review."),
     graph_dir: str = typer.Argument("graph", help="Directory containing the items."),
-    subscription: bool = typer.Option(False, "--subscription", help=_SUBSCRIPTION_HELP),
+    subscription: bool = typer.Option(False, "--subscription", help=_SUBSCRIPTION_HELP,
+                                      hidden=True),
     api_key_env: str = typer.Option(None, "--api-key-env", help=_KEY_ENV_HELP),
     gateway: bool = typer.Option(False, "--gateway", help=_GATEWAY_HELP),
     gateway_url: str = typer.Option(None, "--gateway-url", help=_GATEWAY_URL_HELP),
@@ -642,8 +645,8 @@ def review_cmd(
 ):
     """Quality-review one item in an isolated context. Prints findings JSON.
 
-    Billed to the API key in REQLITE_API_KEY unless --api-key-env, --subscription or
-    --gateway says otherwise.
+    Billed to the API key in REQLITE_API_KEY unless --api-key-env or --gateway says
+    otherwise.
 
     Exit codes: 0 reviewed; 1 could not review (reason on stderr, nothing on stdout);
     3 reviewed but the response was unreadable — JSON with `warning` and `raw_response`
@@ -671,7 +674,8 @@ def review_cmd(
 def consistency_cmd(
     item_id: str = typer.Argument(..., help="Item ID to check against its foundations."),
     graph_dir: str = typer.Argument("graph", help="Directory containing the items."),
-    subscription: bool = typer.Option(False, "--subscription", help=_SUBSCRIPTION_HELP),
+    subscription: bool = typer.Option(False, "--subscription", help=_SUBSCRIPTION_HELP,
+                                      hidden=True),
     api_key_env: str = typer.Option(None, "--api-key-env", help=_KEY_ENV_HELP),
     gateway: bool = typer.Option(False, "--gateway", help=_GATEWAY_HELP),
     gateway_url: str = typer.Option(None, "--gateway-url", help=_GATEWAY_URL_HELP),
@@ -718,7 +722,7 @@ def check_ruleset_cmd(
         False, "--algorithmic", help="Run only the deterministic half; no model call.",
     ),
     subscription: bool = typer.Option(
-        False, "--subscription",
+        False, "--subscription", hidden=True,
         help="Run both halves; pay for the semantic half with your own Claude login.",
     ),
     api_key_env: str = typer.Option(None, "--api-key-env", help=_KEY_ENV_HELP),
@@ -731,8 +735,8 @@ def check_ruleset_cmd(
     """Check the ruleset's own coherence. Prints JSON.
 
     The deterministic half runs first; the semantic half runs only if it found nothing.
-    The semantic half is billed to the API key in REQLITE_API_KEY unless --api-key-env,
-    --subscription or --gateway says otherwise; --algorithmic runs the free half alone.
+    The semantic half is billed to the API key in REQLITE_API_KEY unless --api-key-env or
+    --gateway says otherwise; --algorithmic runs the free half alone.
 
     Exit codes: 0 completed; 1 could not run (reason on stderr, nothing on stdout); 3 the
     semantic response was unreadable (`warning` and `raw_response`, no `findings`);
@@ -745,8 +749,8 @@ def check_ruleset_cmd(
                         or gateway_key_env or gateway_header):
         typer.echo(
             "Error: choose one mode. --algorithmic runs the deterministic half only and "
-            "makes no model call, so it takes no credential (--subscription, "
-            "--api-key-env, --gateway).",
+            "makes no model call, so it takes no credential (--api-key-env, "
+            "--gateway).",
             err=True,
         )
         raise typer.Exit(code=1)
@@ -860,52 +864,199 @@ def commit_gate_cmd():
 
 
 # Spec: FR-019.
-@app.command("impl-scan")
-def impl_scan_cmd(
-    src_dir: str = typer.Argument("src/reqlite", help="Source tree to scan."),
+@app.command("fences")
+def fences_cmd(
+    paths: list[str] = typer.Argument(None, help="Files or directories to scan (default: .)."),
     graph_dir: str = typer.Option("graph", help="Spec graph directory."),
+    expect: list[str] = typer.Option(
+        None, "--expect", help="Item type that should be realised by a fence (repeatable)."),
+    ignore: list[str] = typer.Option(
+        None, "--ignore",
+        help="Directory name or glob to skip, added to the defaults (repeatable)."),
+    list_fences: bool = typer.Option(False, "--list", help="List the fenced spans."),
+    unfenced_files: bool = typer.Option(
+        False, "--unfenced-files", help="List the files with no fence."),
+    as_json: bool = typer.Option(False, "--json", help="Print the whole result as JSON."),
 ):
-    """Report how implemented code traces to the spec."""
-    from reqlite.impl_scan import justification_report
+    """Report how fenced text traces to the spec.
 
-    rep = justification_report(Path(src_dir), Path(graph_dir))
-    typer.echo(
-        f"IMPL units: {rep['total']}  |  justified: {rep['justified']}"
-        f"  |  unjustified: {len(rep['unjustified'])}"
-    )
-    if rep["unjustified"]:
-        typer.echo("\nUnjustified code (no spec link):")
-        for u in rep["unjustified"]:
-            typer.echo(f"  {u}")
-    if rep["unrealised_sc"]:
-        typer.echo(f"\nSCs with no code claiming them: {', '.join(rep['unrealised_sc'])}")
-    if rep["dangling"]:
-        typer.echo("\nCode claiming a non-existent spec id:")
-        for k, v in rep["dangling"].items():
-            typer.echo(f"  {k}: {v}")
+    A fence is a `reqlite:begin <ID>` ... `reqlite:end <ID>` pair of comment lines in any
+    text file; `reqlite:begin <ID> test` marks test code, which realises nothing. Unfenced
+    files, gaps and unrealised items are reported but do not fail.
+
+    Exit codes: 0 no integrity findings; 1 could not run (reason on stderr); 4 unclosed,
+    unopened, mismatched, dangling or unknown-role fences. Exit 2 is a usage error.
+    """
+    from dataclasses import asdict
+
+    from reqlite.fences import IGNORE, INTEGRITY, fence_report
+
+    if not Path(graph_dir).is_dir():
+        typer.echo(f"Error: {graph_dir} is not a directory or does not exist.", err=True)
+        raise typer.Exit(code=1)
+    targets = [Path(p) for p in (paths or ["."])]
+    for t in targets:
+        if not t.exists():
+            typer.echo(f"Error: {t} does not exist.", err=True)
+            raise typer.Exit(code=1)
+    try:
+        rep = fence_report(targets, Path(graph_dir), expect=expect or (),
+                           ignore=IGNORE + tuple(ignore or ()))
+    except ParseError as e:
+        typer.echo(f"Error parsing item: {e}", err=True)
+        raise typer.Exit(code=1)
+    code = 4 if any(f.category in INTEGRITY for f in rep.findings) else 0
+
+    # On stderr in both modes: a CI log shows them, and --json's stdout stays pure JSON.
+    for t in rep.unknown_types:
+        typer.echo(f"Warning: --expect {t} matches no item in {graph_dir}.", err=True)
+    for u in rep.unreadable:
+        typer.echo(f"Warning: could not read {u}; it was not scanned.", err=True)
+
+    if as_json:
+        data = asdict(rep)
+        del data["refs"]
+        if rep.unrealised is None:
+            del data["unrealised"], data["unknown_types"]
+        typer.echo(json.dumps(data, indent=2, ensure_ascii=False))
+        raise typer.Exit(code=code)
+
+    files = {f.file for f in rep.fences}
+    typer.echo(f"Fences: {len(rep.fences)} in {len(files)} file(s)  |  "
+               f"files with no fence: {len(rep.unfenced_files)}  |  "
+               f"integrity findings: {len(rep.findings)}")
+    if list_fences:
+        typer.echo("")
+        for f in rep.fences:
+            typer.echo(f"{f.id}  {', '.join(f.ids)}" + (f"  ({f.role})" if f.role else ""))
+            first = f"  -> {f.first_line}" if f.first_line else ""
+            typer.echo(f"    {f.file}:{f.begin}-{f.end}{first}")
+    # Ordered by what blocks: integrity fails the run, the rest is coverage.
+    if rep.findings:
+        typer.echo("\nIntegrity findings:")
+        for f in rep.findings:
+            typer.echo(f"  {f.category}  {f.file}:{f.line}  {f.detail}")
+    if rep.unrealised is not None:
+        typer.echo(f"\nUnrealised ({', '.join(sorted(set(expect)))}): "
+                   f"{', '.join(rep.unrealised) or 'none'}")
+    if rep.gaps:
+        typer.echo("\nUnfenced lines in fenced files:")
+        for file, ranges in rep.gaps.items():
+            for a, b in ranges:
+                typer.echo(f"  {file}:{a}" + (f"-{b}" if b != a else ""))
+    if rep.unfenced_files:
+        if unfenced_files:
+            typer.echo(f"\nFiles with no fence ({len(rep.unfenced_files)}):")
+            for u in rep.unfenced_files:
+                typer.echo(f"  {u}")
+        else:
+            typer.echo(f"\n{len(rep.unfenced_files)} file(s) with no fence "
+                       "(--unfenced-files to list).")
+    raise typer.Exit(code=code)
 
 
-# Spec: FR-019.
-@app.command("impl-list")
-def impl_list_cmd(
-    src_dir: str = typer.Argument("src/reqlite", help="Source tree to scan."),
-    role: str = typer.Option(None, help="Comma-separated roles (e.g. function,internal,data)."),
-    unjustified: bool = typer.Option(False, help="Show only unjustified units."),
+# Spec: SC-012, DD-023.
+@app.command("trace-compare")
+def trace_compare_cmd(
+    observed: str = typer.Argument(
+        ..., help="Observed data written by a test-run adapter (format version 1)."),
+    paths: list[str] = typer.Argument(
+        None, help="Files or directories to scan for fences (default: .)."),
+    graph_dir: str = typer.Option("graph", help="Spec graph directory."),
+    ignore: list[str] = typer.Option(
+        None, "--ignore",
+        help="Directory name or glob to skip, added to the defaults (repeatable)."),
+    output: str = typer.Option(
+        None, "-o", "--output", help="Also write the expected matrix here, as UTF-8 JSON."),
+    as_json: bool = typer.Option(
+        False, "--json", help="Print the result as JSON (the matrix only goes to -o)."),
 ):
-    """List IMPL code units with detail."""
-    from reqlite.impl_scan import list_impl
+    """Compare a test run's per-test coverage with what the graph and fences expect.
 
-    roles = set(role.split(",")) if role else None
-    nodes = list_impl(Path(src_dir), roles=roles, unjustified_only=unjustified)
-    typer.echo(f"{len(nodes)} IMPL unit(s):\n")
-    for n in nodes:
-        spec = ", ".join(sorted(n.spec_ids)) if n.spec_ids else "UNJUSTIFIED"
-        inh = " (inherited)" if n.inherited else ""
-        typer.echo(f"{n.id}  [{n.role}]")
-        typer.echo(f"    {n.loc}-{n.end_line}  {n.signature}")
-        if n.summary:
-            typer.echo(f"    -> {n.summary}")
-        typer.echo(f"    spec: {spec}{inh}")
+    Unit tests are fenced with the id they test and the role `test`; system tests with the
+    id of the test case they implement. Types and which findings block come from the
+    ruleset's `observed_trace` entry, or the defaults.
+
+    Exit codes: 0 no blocking finding; 1 could not run, unsupported format or stale data
+    (reason on stderr); 4 blocking findings. Exit 2 is a usage error.
+    """
+    from dataclasses import asdict
+
+    from reqlite.fences import IGNORE
+    from reqlite.trace import TraceError, load_observed, trace_compare
+
+    if not Path(graph_dir).is_dir():
+        typer.echo(f"Error: {graph_dir} is not a directory or does not exist.", err=True)
+        raise typer.Exit(code=1)
+    targets = [Path(p) for p in (paths or ["."])]
+    for t in targets:
+        if not t.exists():
+            typer.echo(f"Error: {t} does not exist.", err=True)
+            raise typer.Exit(code=1)
+    try:
+        data = load_observed(Path(observed).read_bytes())
+        res = trace_compare(data, targets, Path(graph_dir), ruleset=_soft_load_ruleset(graph_dir),
+                            ignore=IGNORE + tuple(ignore or ()))
+    except OSError as e:
+        typer.echo(f"Error: cannot read {observed}: {e}", err=True)
+        raise typer.Exit(code=1)
+    except TraceError as e:
+        typer.echo(f"Error: {e}", err=True)
+        raise typer.Exit(code=1)
+    except ParseError as e:
+        typer.echo(f"Error parsing item: {e}", err=True)
+        raise typer.Exit(code=1)
+
+    if res.stale:
+        typer.echo("Error: the observed data does not match these files (changed, missing, "
+                   "or added since the run); re-run the tests and the adapter.", err=True)
+        for f in res.stale:
+            typer.echo(f"  stale  {f}", err=True)
+        raise typer.Exit(code=1)
+    if output:
+        Path(output).write_text(json.dumps(res.matrix, indent=2, ensure_ascii=False) + "\n",
+                                encoding="utf-8")
+    code = 4 if res.blocking else 0
+
+    if as_json:
+        typer.echo(json.dumps({
+            "findings": [asdict(f) for f in res.findings],
+            "coverage": {k: asdict(v) for k, v in res.coverage.items()},
+            "tests": [asdict(t) for t in res.tests],
+            "notes": res.notes,
+        }, indent=2, ensure_ascii=False))
+        raise typer.Exit(code=code)
+
+    kinds = [t.kind for t in res.tests]
+    blocking = [f for f in res.findings if f.blocking]
+    reported = [f for f in res.findings if not f.blocking]
+    typer.echo(f"Tests: {len(kinds)} ({kinds.count('unit')} unit, {kinds.count('system')} "
+               f"system, {kinds.count('untraced')} untraced)  |  findings: {len(blocking)} "
+               f"blocking, {len(reported)} reported")
+    if res.notes:
+        typer.echo("\nNotes:")
+        for n in res.notes:
+            typer.echo(f"  - {n}")
+    # Ordered by what blocks, then what to look at, then the figures.
+    for title, group in (("Blocking", blocking), ("Findings", reported)):
+        if group:
+            typer.echo(f"\n{title}:")
+            for f in group:
+                typer.echo(f"  {f.category}  {f.subject}  {f.detail}")
+    if res.coverage:
+        impl = res.implementation_type
+        typer.echo(f"\nCoverage per {impl} (executable fenced lines; suite = any test, related "
+                   f"= tests sharing a requirement, unit = its own unit tests):")
+        typer.echo(f"  {impl:<12}{'lines':>6}{'suite':>8}{'related':>9}{'unit':>7}")
+
+        def pct(n, of):
+            return f"{100 * n // of}%"
+
+        for sc, c in res.coverage.items():
+            unit = pct(c.unit, c.measured) if c.unit_tests else "-"   # none, not missed
+            typer.echo(f"  {sc:<12}{c.measured:>6}{pct(c.suite, c.measured):>8}"
+                       f"{pct(c.related, c.measured):>9}{unit:>7}")
+    raise typer.Exit(code=code)
 
 
 # Spec: DD-031, SRC-058.
@@ -919,6 +1070,8 @@ def doctor_cmd(
     gateway_url: str = typer.Option(None, "--gateway-url", help=_GATEWAY_URL_HELP),
     gateway_key_env: str = typer.Option(None, "--gateway-key-env", help=_GATEWAY_KEY_ENV_HELP),
     gateway_header: str = typer.Option(None, "--gateway-header", help=_GATEWAY_HEADER_HELP),
+    subscription: bool = typer.Option(False, "--subscription", help=_SUBSCRIPTION_HELP,
+                                      hidden=True),
 ):
     """Check every runtime the plugin needs and print what is missing.
 
@@ -1029,24 +1182,26 @@ def doctor_cmd(
         else:
             warn("key review",
                  f"{key_var} is not set, so key-billed checks (the default) will refuse. "
-                 "Set it outside this session and restart, pass --api-key-env NAME for "
-                 "another variable, or use --subscription.")
-        reason = review_mod.subscription_refusal()
-        login = review_mod.stored_login_path()
-        if reason:
-            warn("subscription review",
-                 f"refused here: {reason}. Subscription-billed inferential checks "
-                 "(--subscription) cannot run in this environment; algorithmic analysis "
-                 "is unaffected.")
-        elif login is not None and review_mod.holds_claude_login(login) is False:
-            warn("subscription review",
-                 f"no stored Claude login at {login}, so --subscription will fail with "
-                 "\"Not logged in\". Run `claude` and `/login` outside this session, or use "
-                 "key mode.")
-        else:
-            ok("subscription review",
-               "not blocked by this environment (the stored Claude login itself is not "
-               "checked)")
+                 "Set it outside this session and restart, or pass --api-key-env NAME "
+                 "for another variable.")
+        # Only when named: the skill offers every mode reported here (#91).
+        if subscription:
+            reason = review_mod.subscription_refusal()
+            login = review_mod.stored_login_path()
+            if reason:
+                warn("subscription review",
+                     f"refused here: {reason}. Subscription-billed inferential checks "
+                     "(--subscription) cannot run in this environment; algorithmic "
+                     "analysis is unaffected.")
+            elif login is not None and review_mod.holds_claude_login(login) is False:
+                warn("subscription review",
+                     f"no stored Claude login at {login}, so --subscription will fail with "
+                     "\"Not logged in\". Run `claude` and `/login` outside this session, or "
+                     "use key mode.")
+            else:
+                ok("subscription review",
+                   "not blocked by this environment (the stored Claude login itself is not "
+                   "checked)")
         # Kind and model only: the URL and every header value stay out of the transcript.
         try:
             gw = review_mod.gateway_from_env(
@@ -1084,3 +1239,4 @@ def doctor_cmd(
 
 if __name__ == "__main__":  # pragma: no cover
     app()
+# reqlite:end SC-005

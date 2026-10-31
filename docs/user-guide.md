@@ -89,7 +89,7 @@ make sure of that.
 
 ## 2. Install and first run
 
-You need Claude Code and [uv](https://docs.astral.sh/uv/).
+You need Claude Code and [uv](https://docs.astral.sh/uv/) 0.4 or later.
 
 ```bash
 claude plugin marketplace add major-solutions/reqlite
@@ -102,7 +102,7 @@ the engine for you. Every command also works directly from the terminal, without
 through a pinned release:
 
 ```bash
-uvx --from "git+https://github.com/major-solutions/reqlite@v0.1.6" reqlite <command>
+uvx --from "git+https://github.com/major-solutions/reqlite@v0.1.7" reqlite <command>
 ```
 
 The plugin's own copy lives in Claude Code's plugin cache under a path that changes with
@@ -135,6 +135,40 @@ your own ruleset directory with `--ruleset <path>`. The copy is yours. reqlite d
 help you design a type system: writing a good one takes experience, and a vague one makes
 every finding meaningless. If you change the copy, run `reqlite check-ruleset` (§6)
 afterwards.
+
+### In VS Code with GitHub Copilot
+
+reqlite also works as an agent plugin in VS Code with GitHub Copilot Chat. Tested on
+Windows with VS Code 1.138 and Copilot Chat 0.66, in the local agent, with the plugin
+loaded from a local clone. Not tested yet: macOS and Linux, the Copilot CLI agent, and
+installing from a marketplace or a Git URL.
+
+1. Turn on agent plugins: `"chat.plugins.enabled": true` in your settings. Your
+   organisation may control this setting.
+2. Install it in one of these ways:
+   - From a local clone (the tested route):
+     `"chat.pluginLocations": { "<path to the clone>": true }`.
+   - From the Command Palette: **Chat: Install Plugin From Source**, with the URL
+     `https://github.com/major-solutions/reqlite`.
+   - From the marketplace: add `"chat.plugins.marketplaces": ["major-solutions/reqlite"]`,
+     then search the Extensions view for `@agentPlugins` and install `reqlite`.
+
+   VS Code marks `chat.pluginLocations` and `chat.plugins.marketplaces` as experimental.
+3. Reload the window, or start a new chat, after installing or updating: hooks are read
+   when a session starts.
+
+Both skills work as they do in Claude Code. The commit check behaves differently:
+
+- **It runs before every tool call**, not only before commits, and adds 2–3 seconds to
+  each (§10). It acts only on commits.
+- **A blocked commit shows its message twice**, once for each of the check's two hook
+  entries.
+- **On Windows, hooks run in Windows PowerShell** by default, and the check follows
+  PowerShell's directory changes (`Set-Location`, `$env:X`; §7).
+
+To see what the check did, open the Output panel and select **GitHub Copilot Chat Hooks**.
+It lists each hook run, its result (`Success`, `NonBlockingError` or `Error`) and its
+output.
 
 ---
 
@@ -232,7 +266,7 @@ flowchart LR
     class D planned
 ```
 
-*The dashed step is designed but not yet available in the local tool (see §8).*
+*The dashed step is designed but not yet available in the local tool (see §10).*
 
 - Do not spend tokens on an item that does not even parse or that breaks the ruleset.
   The commit check catches that for free.
@@ -360,10 +394,9 @@ GitHub.
 Ask Claude to *"review FR-012"*, or use `/reqlite:review FR-012`.
 
 - **Who pays.** By default, the Anthropic API key in `REQLITE_API_KEY` (see *Setting up
-  a key* below). `--subscription` uses the Claude login stored on your machine instead,
-  normally your Pro or Max subscription. `--gateway` sends it through your company's
-  gateway or cloud provider (see *Through a company gateway* below). The skill asks once
-  per conversation before the first review, and again before more than five.
+  a key* below). `--gateway` sends it through your company's gateway or cloud provider
+  (see *Through a company gateway* below). The skill asks once per conversation before
+  the first review, and again before more than five.
 - **What you get back.** A JSON list of findings, each with a category, a summary and its
   reasoning. Your type's prompt defines the categories. This repository's FR prompt, for
   instance, checks for `not_testable`, `solution_leakage`, `misclassified`,
@@ -424,7 +457,7 @@ before showing you a result.
 ### Through a company gateway
 
 If your company routes Claude through a gateway (`ANTHROPIC_BASE_URL`, for example
-Portkey or LiteLLM) or through Bedrock or Vertex, key and subscription mode both refuse,
+Portkey or LiteLLM) or through Bedrock or Vertex, key mode refuses,
 because the review would leave the path your company set. `--gateway` uses that path
 instead, and the review is billed to whatever it routes to.
 
@@ -528,13 +561,195 @@ intent. Enforcement that cannot be skipped needs branch protection on the remote
 
 ---
 
-## 8. Current limits
+## 8. Tracing code to the spec
+
+Code, scripts, configuration and notes trace back to the items that justify them through
+**fences**: a pair of comment lines around a span, in any text file.
+
+```text
+<comment> reqlite:begin <ID>[, <ID>...] [test]
+...the span...
+<comment> reqlite:end <ID>
+```
+
+The comment is whatever the file's language uses: `#`, `//`, `/* */`, `--`, `;`, `%`,
+`<!-- -->`, `::`, `rem` or `'`, or none in a plain text file. The marker must be the first
+thing on its line. `end` names exactly one id, the first of its `begin`. Fences nest; they
+must not overlap.
+
+After the ids, a `begin` may carry the role `test`, and either line may end with the
+comment's closer (`-->` or `*/`). Nothing else may follow. A **test fence** wraps code that
+checks its ids rather than realising them, such as a unit test fenced with the id of the
+component it tests (§9). It never counts as a realisation.
+
+```sh
+reqlite fences src scripts --expect SC
+```
+
+It reports, in this order:
+
+- **Integrity**, which makes the command exit 4: a `begin` with no `end`, an `end` with no
+  `begin`, an `end` naming a different id than the innermost open `begin`, an id that
+  is not in the graph, and unexpected text after the ids (a misspelt role, a trailing
+  comma, a role on an `end`).
+- **Unrealised items**: items of each `--expect` type that no fence names, test fences
+  not counted. Nothing is assumed without the option, and a type no item has is a
+  warning, not a clean result.
+- **Unfenced lines in fenced files**: line ranges outside every fence that hold text. Put
+  one fence around the whole file and finer ones inside it, or a file's imports and
+  header show up here.
+- **Files with no fence**: counted; `--unfenced-files` lists them.
+
+Exit 1 means the run could not start: no graph directory, a path that does not exist, or
+an item that does not parse. A file that cannot be read is a warning and is skipped.
+
+`--list` lists the fences, `--json` prints everything as JSON. Warnings go to stderr in
+both modes, so the JSON on stdout stays clean. The paths you give are the scope. Binaries
+are skipped, and so are directories named `.git`, `.venv`, `node_modules`, `build`,
+`dist`, `__pycache__` or `*.egg-info` below those paths, and the graph folder; `--ignore
+PATTERN` (repeatable) adds a directory name or glob. A path you name explicitly is
+always scanned, even if its name matches a pattern. A folder below the paths that is a reqlite
+project of its own (a `ruleset/ruleset.json` beside a `graph/`) is skipped too, because its
+fences name its own graph; name it explicitly to scan it.
+
+Fences are matched line by line, not parsed: a marker that starts a line inside a string
+or a markdown code block counts too. A placeholder such as `<ID>` never matches, which is
+how this guide can show the grammar; by the same rule a mistyped marker (`reqlite:begin
+sc-1`) is not a marker at all, so it shows up as unfenced text, not as an error. JSON has
+no comments, so a JSON file cannot be fenced yet.
+
+---
+
+## 9. Tracing tests to the spec
+
+`fences` shows that code is justified. `trace-compare` checks the tests: it takes the lines
+each test executed in a real run and compares them with what the graph says that test
+should reach.
+
+```sh
+reqlite trace-compare observed.json src tests
+```
+
+**Fence the tests.** A unit test is fenced with the id of the component it tests and the
+role `test`. A system test, which implements a test case, is fenced with the test case's
+id. Fence by function: one test function per fence, and in the code a component's own
+functions, so that a unit never shares a function with another one.
+
+```text
+# reqlite:begin <component id> test
+def test_rejects_negative_gain(): ...
+# reqlite:end <component id>
+
+# reqlite:begin <test case id>
+def test_gain_end_to_end(): ...
+# reqlite:end <test case id>
+```
+
+**What it expects.** A component realises a requirement when its links lead to it through
+design decisions only. Links between two components, or between two requirements, do not
+spread realisation. A test case verifies the requirements its links lead to in the same
+way. A component's direct links to other components are its declared dependencies.
+
+**What it reports.** Exit 4 on a blocking finding. By default only `untraced_test` blocks,
+and the ruleset can change that (below). Fence integrity problems always block, because
+lines cannot be attributed without well-formed fences.
+
+| Finding | Meaning |
+|---|---|
+| `untraced_test` | a test inside no unit-test fence and no test-case fence |
+| `test_misses_target` | a unit test that never ran its component (saying so when other tests do run it); a system test that ran none of its requirement's components |
+| `partial_system_test` | a requirement's system tests, together, missed some of its components |
+| `not_a_unit_test` | a unit test ran another component, outside its own function, that is not a declared dependency |
+| `undeclared_coupling` | two components such a test ran together, with no link between them in either direction; an unordered pair, because line coverage cannot tell which called which. A reach that another reached component's declared dependency explains is not reported |
+| `coincidental_coverage` | a component run only by tests unrelated to its requirements |
+| `no_unit_test` | a component with no unit test (only with `require_unit_test`) |
+| `unexecuted_realisation` | a component no passing test ran |
+| `unjustified_code` | an executed line outside every fence, in a file that has a realisation fence and no tests. An executed file with no fence at all is listed in a note: `fences` already reports it as unfenced |
+| `mixed_role_fence` | a fence naming both a component and a test case |
+
+Failed and skipped tests run nothing for the comparison. Ids of other types in a fence are
+ignored, with a note. After the findings comes a table per component, over its executable
+fenced lines: the share run by any test (**suite**), by tests sharing one of its
+requirements (**related**) and by its own unit tests (**unit**). "100% suite, 0% unit" is
+the line a reviewer needs; a component with no unit test at all shows `-` there instead.
+
+A test case with no fenced test runs nothing, so `trace-compare` cannot see it: `reqlite
+fences --expect TC` lists the test cases no fence names.
+
+Exit 1 means it could not run: no graph directory, a missing path, observed data that is
+not UTF-8 JSON or not format version 1, or **stale** data: a file's content differs from
+the run's, or a fenced file inside the declared `scope` is missing from it (added since the
+run). Hashes ignore line endings, so a Windows checkout of the same commit is not stale.
+`--json` prints the result; `-o FILE` writes the expected matrix (requirements,
+components, test cases, fences and file hashes) as a record of the run.
+
+**Configuration** lives in the ruleset under a top-level `observed_trace` key. Without it
+the defaults apply and a note says so. `check-ruleset` validates it.
+
+```json
+"observed_trace": {
+  "requirement_type": "FR", "implementation_type": "SC", "verification_type": "TC",
+  "intermediate_types": ["DD"], "require_unit_test": false, "blocking": ["untraced_test"]
+}
+```
+
+### The observed data format, version 1
+
+An **adapter** writes this file from your test tool's own output. It needs no knowledge of
+the graph, so it can be a short script in any language, for any tool that records
+coverage per test. An example for pytest ships in `examples/adapters/pytest_observed.py`.
+
+```json
+{"contract": 1,
+ "source": {"tool": "pytest-cov", "commit": "4f2a9c1", "metric": "line"},
+ "files": {"src/gain.py": "<sha256>", "tests/test_gain.py": "<sha256>"},
+ "scope": ["src/**/*.py"],
+ "executable": {"src/gain.py": [3, 4, 6, 9]},
+ "outside_tests": {"src/gain.py": [1, 3, 8]},
+ "functions": {"src/gain.py": [[3, 6, "gain"], [8, 9, "clamp"]]},
+ "tests": [{"name": "tests/test_gain.py::test_scales", "file": "tests/test_gain.py",
+            "line": 12, "outcome": "passed", "executed": {"src/gain.py": [4, 6, 9]}}]}
+```
+
+- `contract` is the format version. Paths are relative to the project root, with `/`.
+- `files`: the sha256 of every file the data names, computed **after replacing CRLF with
+  LF**.
+- `scope` (optional): globs for what the tool measured (`*` within a directory, `**`
+  across directories). It promises that every matching file is in `executable`, so a
+  fenced file that matches but is missing makes the data stale. Without it, a file added
+  since the run cannot be told from one the tool does not measure.
+- `executable`: every line coverage could have recorded, per file. This is the
+  denominator.
+- `outside_tests` (optional): lines that ran, but only outside every test's own run:
+  definitions executed at import, collection, fixture setup. They are taken out of every
+  figure. A tool that records only statements inside functions leaves it out.
+- `functions` (optional): function spans, the unit boundary for `not_a_unit_test`.
+  Without them the boundary is the file, and a note says so.
+- `tests`: one entry per test. `line` is where its fence finds it (the `def` line, or
+  `null` if unknown). `outcome` is `passed`, `failed`, `skipped` or `error`. `executed`
+  holds only the lines run by the test itself, not by its fixtures' setup or teardown.
+
+An adapter must not run reqlite or read the graph. Write the file directly rather than
+through shell redirection: Windows PowerShell 5.1 writes UTF-16, which is refused.
+Per-test coverage must come from the tool; a single combined report cannot be split by
+test.
+
+---
+
+## 10. Current limits
 
 - **Three inferential analyses are available locally:** single-item quality review, the
   consistency check, and the ruleset check. The others are designed but do not run yet:
   layer (contradictions among items of one type), custom analysis (your own question over
   items you choose) and proposals. If you ask for one, the
   skills tell you so rather than improvising it in the conversation.
+- **The model can still invent values when it writes many items at once.** On a long
+  bulk-authoring turn it may set `certainty`, `negotiability` or `effort`, or add
+  alternatives and caveats, that you never gave it. reqlite cannot stop this, but it
+  shows it: `check --changed` lists every judgment field each new item sets, and the
+  skill repeats that list when it hands back. Read it before you commit, and run the
+  consistency check on new decisions. It is what caught a paraphrased constraint in
+  testing.
 - **Keys come from environment variables only.** Fetching a key from a password manager
   at call time is planned.
 - **Gateway mode does not support macOS or Microsoft Foundry.** On macOS the Claude login
@@ -547,8 +762,8 @@ intent. Enforcement that cannot be skipped needs branch protection on the remote
 
   ```sh
   #!/bin/sh
-  exec uvx --quiet --from "git+https://github.com/major-solutions/reqlite@v0.1.6" \
-    --exclude-newer "7 days" reqlite check --staged graph
+  exec uvx --quiet --from "git+https://github.com/major-solutions/reqlite@v0.1.7" \
+    --exclude-newer 2026-10-24 reqlite check --staged graph
   ```
 
   It needs `uv` on the PATH git runs hooks with. The version is pinned, so it does not

@@ -546,7 +546,7 @@ def test_stdin_is_decoded_as_utf8_whatever_the_platform_default():
 
 @pytest.mark.parametrize("command, joined", [
     ("check", "or with --staged"),
-    ("review", "--subscription or --gateway says otherwise"),
+    ("review", "--api-key-env or --gateway says otherwise"),
 ])
 def test_help_reflows_docstring_paragraphs(command, joined):
     import re
@@ -556,3 +556,12 @@ def test_help_reflows_docstring_paragraphs(command, joined):
     assert result.exit_code == 0
     plain = re.sub(r"\x1b\[[0-9;]*m", "", result.output)
     assert joined in plain, plain
+
+
+@pytest.mark.parametrize("command", ["review", "consistency", "check-ruleset", "doctor"])
+def test_subscription_is_a_hidden_local_override(command):
+    """Not offered to installers while the Agent SDK's claude.ai-login clause is open (#91);
+    the oracle-28 tests show it still runs when named."""
+    result = runner.invoke(app, [command, "--help"], env={"COLUMNS": "200"})
+    assert result.exit_code == 0
+    assert "subscription" not in result.output.lower()

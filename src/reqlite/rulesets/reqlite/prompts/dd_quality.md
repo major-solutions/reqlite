@@ -10,7 +10,7 @@ Evaluate the DD against these quality criteria:
 6. **Risks named**: For decisions with material downside potential, the DD should name what could go wrong if this choice fails. Risks differ from trade-offs — trade-offs are accepted costs, risks are possible costs.
 7. **Constraints noted**: The DD should reference any constraints (technical, organizational, regulatory) that bounded the decision space. Constraints inherited from upstream SRC items need not be restated, but a decision shaped by a constraint should make the constraint visible.
 8. **Simple DDs are acceptable**: A DD like "manifest format is YAML" may not need extensive trade-offs, alternatives, risks, or constraints. Apply criteria 3, 5, 6, 7 only when the decision is complex enough to warrant them — ask "should this section be here?" not "is this section filled in?".
-9. **Certainty coherent with evidence**: If certainty is "verified," evidence should be present or the body should reference supporting material. If "speculative," null evidence is expected.
+9. **Certainty coherent with evidence**: If certainty is "verified," evidence should be present or the body should reference supporting material. If "speculative," null evidence is expected. If certainty is not set, do not report `certainty_evidence_mismatch`: the owner sets it, and leaving it unset until they do is the method.
 10. **Not misclassified**: A DD that reads like a testable system capability may belong as an FR. A DD that reads like a concrete deliverable with effort may belong as an SC. Flag only clear cases.
 
 Respond with ONLY valid JSON matching this schema:

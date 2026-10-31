@@ -472,8 +472,9 @@ def test_oracle_30_no_mode_flag_or_key_refuses_and_names_every_way_on(tmp_path, 
     t = _cli_transport(monkeypatch, FakeTransport(_semantic()))
     r = _invoke(str(_project(tmp_path)))
     assert r.exit_code == 1
-    for name in ("REQLITE_API_KEY", "--algorithmic", "--subscription"):
+    for name in ("REQLITE_API_KEY", "--algorithmic", "--gateway"):
         assert name in r.stderr
+    assert "subscription" not in r.stderr
     assert r.stdout.strip() == ""
     assert t.calls == []
 

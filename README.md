@@ -64,7 +64,7 @@ independent of whoever wrote the item.
 ## Install
 
 reqlite is a [Claude Code](https://claude.com/claude-code) plugin. You need Claude Code
-and [uv](https://docs.astral.sh/uv/). It is developed and tested on current Claude Code
+and [uv](https://docs.astral.sh/uv/) 0.4 or later. It is developed and tested on current Claude Code
 (2.1.310). Versions from 2.1.76 install it; before 2.1.85 the commit check runs ahead of
 every shell command rather than only commits, adding about half a second to each.
 
@@ -73,12 +73,16 @@ claude plugin marketplace add major-solutions/reqlite
 claude plugin install reqlite@reqlite
 ```
 
+It also works as an agent plugin in VS Code with GitHub Copilot (tested on Windows); the
+[user guide](docs/user-guide.md#in-vs-code-with-github-copilot) has the setup and the
+differences.
+
 Then, in a repository, ask Claude to *"set up reqlite here"* (it runs `reqlite init`), or
 to *"run the reqlite report"*. The plugin brings two skills: `reqlite` for the method,
 authoring and structural analysis, and `review` for LLM review.
 
 **LLM review** is billed to an Anthropic API key in the `REQLITE_API_KEY` environment
-variable by default, or to your Claude login with `--subscription`. Claude asks which one
+variable by default, or to your company's gateway with `--gateway`. Claude asks which one
 before the first review. The [user guide](docs/user-guide.md#setting-up-a-key) explains
 how to set up a key safely.
 
@@ -115,9 +119,9 @@ cd reqlite
 uv run --extra dev pytest
 ```
 
-Python 3.11+. Issues are welcome. Changes are made in the private development
-repository and arrive here with each release, so a pull request is read as a proposal
-rather than merged directly.
+Python 3.11+. Issues are welcome; for security problems, see [SECURITY.md](SECURITY.md).
+Changes are made in the private development repository and arrive here with each
+release, so a pull request is read as a proposal rather than merged directly.
 
 ## License
 

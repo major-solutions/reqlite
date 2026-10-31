@@ -12,6 +12,9 @@ from reqlite.graph import build_graph
 
 FIXTURES_DIR = Path(__file__).parent / "fixtures" / "graph"
 
+# Fixture projects carry their own test suites (tests/fixtures/trace), run on purpose.
+collect_ignore = ["fixtures"]
+
 
 @pytest.fixture
 def fixture_items():

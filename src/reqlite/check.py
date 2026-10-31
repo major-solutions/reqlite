@@ -1,3 +1,4 @@
+# reqlite:begin SC-017
 """
 SC-017: Commit check.
 
@@ -498,3 +499,4 @@ def commit_gate(payload: dict) -> tuple[int, str]:
         "found errors. Fix them before committing.\n" + "\n\n".join(blocks)
         + "\n\n" + _NO_BYPASS
     )
+# reqlite:end SC-017

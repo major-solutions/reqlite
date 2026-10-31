@@ -1,3 +1,4 @@
+# reqlite:begin SC-009
 """
 SC-009: Context assembler (subgraph compiler).
 
@@ -125,3 +126,4 @@ def compile_item(
 
     sections = [system_prompt, "", _render_item(item), ""]
     return "\n".join(sections)
+# reqlite:end SC-009

@@ -101,10 +101,44 @@ Retirement is **absorption then deletion**:
 4. Delete the file.
 5. `reqlite check --changed` must report no errors: a link left behind shows as
    `unknown_reference`.
-6. The commit message must name the retired id and where its value went — git history is
+6. If the project fences code, run `reqlite fences`. A fence still naming the retired id
+   is a `dangling_fence_ref` (exit 4), which `check` and the commit check do not see.
+   Re-fence the span with the item that absorbed the value, or ask the user.
+7. The commit message must name the retired id and where its value went — git history is
    the archive. Propose that message to the user; the commit is theirs (see Hand-off).
 
 Never mark an item as retired, move it to an archive folder, or reuse its number.
+
+## Fence code you write
+
+Only in a project that already fences its code (`reqlite fences` reports fences), or when
+the user asks. A fence is a pair of comment lines around a span, in any text file:
+
+```text
+<comment> reqlite:begin <ID>[, <ID>...] [test]
+...the span...
+<comment> reqlite:end <ID>
+```
+
+- The marker is the first thing on its line, after the file's comment leader (`#`, `//`,
+  `%`, `--`, `<!--`, ...). `end` names exactly one id: the first of its `begin`. Fences
+  nest and must not overlap. Nothing may follow the ids except the role `test` on a
+  `begin` and a comment closer (`-->`, `*/`).
+- **Which id.** Fence code with the item that justifies it, normally the implementation
+  type (`SC` in the shipped ruleset; the project's `observed_trace` names it). Fence a
+  unit test with the id of the component it tests and the role `test`. Fence a system
+  test with the id of the test case it implements (`TC`). Never put a component and a test
+  case in one fence (`mixed_role_fence`).
+- **Fence by function.** One test function per fence, and a component's own functions in
+  its fence, so that no function is shared between two units. One fence around a whole
+  file with finer ones inside keeps imports and headers from showing as unfenced.
+- **The id must exist.** Get or write the item first; a fence never invents one. Ask the
+  user which item justifies a span you cannot place; do not pick the nearest-sounding one.
+- In examples and documentation write a placeholder (`<ID>`), which never matches.
+- Then run `reqlite fences <paths you changed>` and fix any exit 4.
+
+A test case links to the requirement it verifies, never to a component: it checks the
+capability, not the implementation. Read the TC type's `description` before writing one.
 
 ## Hand-off
 

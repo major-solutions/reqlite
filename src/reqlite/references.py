@@ -1,3 +1,4 @@
+# reqlite:begin SC-001, FR-002
 """
 SC-001: Reference extractor.
 
@@ -65,3 +66,4 @@ def extract_link_targets(content: str) -> dict[str, set[str]]:
                     targets.setdefault(match.group(1), set()).add(href)
 
     return targets
+# reqlite:end SC-001

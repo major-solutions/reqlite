@@ -468,8 +468,9 @@ def test_oracle_27_cli_without_any_credential_refuses_and_names_the_ways_on(
     t = _cli_transport(monkeypatch, FakeTransport(_findings()))
     r = _invoke("SRC-001", str(graph))
     assert r.exit_code == 1
-    for name in ("REQLITE_API_KEY", "--api-key-env", "--subscription"):
+    for name in ("REQLITE_API_KEY", "--api-key-env", "--gateway"):
         assert name in r.stderr
+    assert "subscription" not in r.stderr
     assert r.stdout.strip() == ""
     assert t.calls == []
 

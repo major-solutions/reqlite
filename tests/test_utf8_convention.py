@@ -4,8 +4,8 @@
 `Path.read_text()` and `open()` honour the *platform* default when no encoding is
 given — UTF-8 on Linux, cp1252 on a Western Windows install — so an omitted
 encoding is a bug that passes on CI and fails on the operator's machine. That is
-exactly how it reached main: 11 `test_impl_scan.py` failures invisible to a Linux
-runner.
+exactly how it reached main: 11 failures in the tests of the former `ast` code scanner,
+invisible to a Linux runner.
 
 This test is the platform-independent guard those tests cannot be. It reads the
 source rather than exercising behaviour, because reproducing a cp1252 default on a
